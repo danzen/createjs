@@ -1,7 +1,6 @@
-![createjs](https://github.com/danzen/createjs/assets/380281/e70bc99d-2e11-4e73-b497-25936050cfc8)
-<p>ZIM at https://zimjs.com is a general JavaScript Canvas Framework that is powered by CreateJS.
-CreateJS has been stable since 2017 and generally provides containers and events for the HTML Canvas
-as well as preloading, sound and tweening - see https://createjs.com
+![createjs](https://github.com/danzen/createjs/assets/380281/927f73fb-2bed-4268-8daa-f4f492875218)
+<p><em>ZIM at https://zimjs.com is a general JavaScript Canvas Framework that is powered by CreateJS.</em></p>
+<p>CreateJS is a suite of modular libraries and tools which work together or independently to enable rich interactive content on open web technologies via HTML5.  See https://createjs.com. CreateJS has been stable since 2017 and generally provides containers and events for the HTML Canvas as well as preloading, sound and tweening.
 </p>
 
 <h2>ZIM FEATURES</h2>
@@ -20,12 +19,11 @@ Please read https://zimjs.com/about for features.</p>
 It is based on CreateJS 1.0.  Look for <em>Dan Zen</em> in the code to see the 40 (or so) updates.
 Many of the updates have also been updated in the CreateJS Github where we do maintenance.</p>
 <p>Generally, ZIM works with the official CreateJS except for <a href="https://zimjs.com/015" target=_blank>ZIM&nbsp;TextureActives</a> which needs this version.
-The offical release is hosted on the Adobe CDN and is used with Adobe Animate. 
+The offical CDN release of CreateJS is hosted at Adobe and is used with Adobe Animate. 
 However, multitouch and retina adjustments make using our version a little more stable.
-Retina (devicePixelRatio) makes you have to adjust for stage scale for mouse positions in the official CreateJS.
+For instance, in the official CreateJS, devicePixelRatio makes you have to adjust for stage scale for mouse positions.
 The ZIM version adjusts for that.</p>
-<p>Note - that ZIM has 
-ZIM Shim for Adobe Animate and you can use this version of CreateJS with that too.</p>
+<p>Note, there is ZIM Shim for Adobe Animate and you can use this version of CreateJS with ZIM Shime to export from Animate to ZIM.</p>
 
 <a target="_blank" href="https://zimjs.com/animate.html">![zimshim_header](https://github.com/danzen/createjs/assets/380281/43855e25-8e35-4f92-a319-2d8def762458)</a>
 
