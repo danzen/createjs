@@ -21,9 +21,9 @@ Many of the updates have also been updated in the CreateJS Github where we do ma
 <p>Generally, ZIM works with the official CreateJS except for <a href="https://zimjs.com/015" target=_blank>ZIM&nbsp;TextureActives</a> which needs this version.
 The offical CDN release of CreateJS is hosted at Adobe and is used with Adobe Animate. 
 However, multitouch and retina adjustments make using our version a little more stable.
-For instance, in the official CreateJS, devicePixelRatio makes you have to adjust for stage scale for mouse positions.
+In the official CreateJS, devicePixelRatio makes you have to adjust for stage scale for mouse positions.
 The ZIM version adjusts for that.</p>
-<p>Note, there is ZIM Shim for Adobe Animate and you can use this version of CreateJS with ZIM Shime to export from Animate to ZIM.</p>
+<p>Note, there is ZIM Shim for Adobe Animate and you can use this version of CreateJS with ZIM Shim to export from Animate to ZIM.</p>
 
 <a target="_blank" href="https://zimjs.com/animate.html">![zimshim_header](https://github.com/danzen/createjs/assets/380281/43855e25-8e35-4f92-a319-2d8def762458)</a>
 
