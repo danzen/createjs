@@ -26,6 +26,7 @@ The ZIM version adjusts for that.</p>
 <p>Note, there is ZIM Shim for Adobe Animate and you can use this version of CreateJS with ZIM Shim to export from Animate to ZIM.</p>
 
 <a target="_blank" href="https://zimjs.com/animate.html">![zimshim_header](https://github.com/danzen/createjs/assets/380281/43855e25-8e35-4f92-a319-2d8def762458)</a>
+<p>See the <a href=https://github.com/danzen/zimjs>ZIM GitHub Repository</a> for more information.</p>
 
 
 
