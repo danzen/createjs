@@ -13029,7 +13029,11 @@ function makeRemotePointers() {
 	 * @private
 	 **/
 	var canvas = (createjs.createCanvas?createjs.createCanvas():document.createElement("canvas"));
-	if (canvas.getContext) {Text._workingContext = canvas.getContext("2d"); Text._workingCount=0; canvas.width = canvas.height = 1;}
+	if (canvas.getContext) {
+        Text._workingContext = canvas.getContext("2d"); 
+        // Text._workingCount=0; 
+        canvas.width = canvas.height = 1;
+    }
 
 
 // constants:
@@ -13294,9 +13298,10 @@ p._drawText = function(ctx, o, lines) {
 	     o.height = count * lineHeight;
 	 }
 	 if (!paint) {
-		Text._workingCount++;
-		if (Text._workingCount%100!=0) ctx.restore();
-		else ctx.reset();
+        ctx.restore();
+		// Text._workingCount++;
+		// if (Text._workingCount%100!=0) ctx.restore();
+		// else ctx.reset();
 	 }
 	 return o;
 	};

@@ -1,6 +1,6 @@
 {
   "name": "@zimjs/createjs",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "A version of CreateJS https://createjs.com that that provides a Bitmap Object Model (BOM) and events to run with the ZIM JavaScript Canvas Framework https://zimjs.com",
   "main": "create.js",
   "scripts": {
