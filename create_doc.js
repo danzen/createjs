@@ -1,6 +1,6 @@
 /*!
 * CreateJS
-* Visit http://createjs.com/ for documentation, updates and examples.
+* Visit https://createjs.com/ for documentation, updates and examples.
 *
 * Copyright (c) 2010 gskinn2er.com, inc.
 
@@ -26,7 +26,15 @@
 * OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// ZIM version - createjs 1.5.0
+/*
+Additional BitmapData for EaselJS
+Version: 1.11
+Author: kudox
+http://kudox.jp/
+http://twitter.com/u_kudox
+Licensed under the MIT License
+Copyright (c) 2013 kudox.jp
+*/
 
 var createjs = createjs||{};
 
@@ -46,6 +54,11 @@ createjs.stageTransformable = true;
 // Initially thought it would be on any getContext("2d") but it slows apps down 
 // so we added it to the ones that use getImageData() to avoid the Chrome warning
 createjs.willReadFrequently = true;
+
+// Dan Zen 2023 - added adjust to event system to handle remote pointers 
+// used for reading raycast data, for instance, with ZIM TextureActive
+
+// Dan Zen 2025 - added monitor system to events for ZIM Monitor
 
 
 //##############################################################################
@@ -549,6 +562,15 @@ createjs.deprecate = function(fallbackMethod, name) {
 	}
 	var p = EventDispatcher.prototype;
 
+// static public properties: 
+	/**
+		 * Static monitor - an EventDispatcher object to dispatch when events are put on and taken off.
+		 *
+		 * 		EventDispatcher.monitor = new createjs.EventDispatcher();
+		 *
+		 **/
+	EventDispatcher.monitor = new EventDispatcher(); // added by Dan Zen Nov 12, 2025
+
 // static public methods:
 	/**
 	 * Static initializer to mix EventDispatcher methods into a target object or prototype.
@@ -572,6 +594,26 @@ createjs.deprecate = function(fallbackMethod, name) {
 		target.willTrigger = p.willTrigger;
 	};
 
+	/**
+	 * Static monit - used by EventDispatcher addEventListener and removeEventListener (and on and off).
+	 *
+	 * 		EventDispatcher.monit(applied, type, obj, mID); // dispatch a report on the EventDispatcher.monitor
+	 *
+	 * @method monit
+	 * @static
+	 * @param {String} applied This is "on", "off", or "offs" depending on which eventListener is used.
+	 * @param {String} type The event type such as "click", "mousedown", etc.
+	 * @param {Object} obj The object the event was placed on.
+	 * @param {String} mID A custom monitor ID that can be sent along for the report. 
+	 **/
+	EventDispatcher.monit = function(applied, type, obj, mID) { // added by Dan Zen Nov 12, 2025 - for ZIM
+		var e = new createjs.Event(applied);
+		e.eventType = type;
+		e.obj = obj;
+		e.mID = mID;
+		EventDispatcher.monitor.dispatchEvent(e);
+	}
+
 
 // public methods:
 	/**
@@ -590,9 +632,10 @@ createjs.deprecate = function(fallbackMethod, name) {
 	 * @param {Function | Object} listener An object with a handleEvent method, or a function that will be called when
 	 * the event is dispatched.
 	 * @param {Boolean} [useCapture] For events that bubble, indicates whether to listen for the event in the capture or bubbling/target phase.
+	 * @param {String} [mID] A custom monitor ID that can be sent along for the report. 
 	 * @return {Function | Object} Returns the listener for chaining or assignment.
 	 **/
-	p.addEventListener = function(type, listener, useCapture) {
+	p.addEventListener = function(type, listener, useCapture, mID) {
 		var listeners;
 		if (useCapture) {
 			listeners = this._captureListeners = this._captureListeners||{};
@@ -600,10 +643,11 @@ createjs.deprecate = function(fallbackMethod, name) {
 			listeners = this._listeners = this._listeners||{};
 		}
 		var arr = listeners[type];
-		if (arr) { this.removeEventListener(type, listener, useCapture); }
+		if (arr) { this.removeEventListener(type, listener, useCapture, "c~-"); } // Dan Zen added the mID that avoid monitor reporting
 		arr = listeners[type]; // remove may have deleted the array
 		if (!arr) { listeners[type] = [listener];  }
-		else { arr.push(listener); }
+		else { arr.push(listener); }		
+		EventDispatcher.monit("on", type, this, mID);
 		return listener;
 	};
 
@@ -639,18 +683,19 @@ createjs.deprecate = function(fallbackMethod, name) {
 	 * @param {Boolean} [once=false] If true, the listener will remove itself after the first time it is triggered.
 	 * @param {*} [data] Arbitrary data that will be included as the second parameter when the listener is called.
 	 * @param {Boolean} [useCapture=false] For events that bubble, indicates whether to listen for the event in the capture or bubbling/target phase.
+	 * @param {String} [mID] A custom monitor ID that can be sent along for the report. 
 	 * @return {Function} Returns the anonymous function that was created and assigned as the listener. This is needed to remove the listener later using .removeEventListener.
 	 **/
-	p.on = function(type, listener, scope, once, data, useCapture) {
+	p.on = function(type, listener, scope, once, data, useCapture, mID) {			
 		if (listener.handleEvent) {
 			scope = scope||listener;
 			listener = listener.handleEvent;
-		}
+		}		
 		scope = scope||this;
 		return this.addEventListener(type, function(evt) {
 			listener.call(scope, evt, data);
-			once&&evt.remove();
-		}, useCapture);
+			once&&evt.remove(mID);
+		}, useCapture, mID);
 	};
 
 	/**
@@ -668,8 +713,9 @@ createjs.deprecate = function(fallbackMethod, name) {
 	 * @param {String} type The string type of the event.
 	 * @param {Function | Object} listener The listener function or object.
 	 * @param {Boolean} [useCapture] For events that bubble, indicates whether to listen for the event in the capture or bubbling/target phase.
-	 **/
-	p.removeEventListener = function(type, listener, useCapture) {
+	 * @param {String} [mID] A custom monitor ID that can be sent along for the report. 
+	**/
+	p.removeEventListener = function(type, listener, useCapture, mID) {
 		var listeners = useCapture ? this._captureListeners : this._listeners;
 		if (!listeners) { return; }
 		var arr = listeners[type];
@@ -681,6 +727,7 @@ createjs.deprecate = function(fallbackMethod, name) {
 				break;
 			}
 		}
+		EventDispatcher.monit("off", type, this, mID);
 	};
 
 	/**
@@ -694,6 +741,7 @@ createjs.deprecate = function(fallbackMethod, name) {
 	 * @param {String} type The string type of the event.
 	 * @param {Function | Object} listener The listener function or object.
 	 * @param {Boolean} [useCapture] For events that bubble, indicates whether to listen for the event in the capture or bubbling/target phase.
+	 * @param {String} [mID] A custom monitor ID that can be sent along for the report. 
 	 **/
 	p.off = p.removeEventListener;
 
@@ -710,13 +758,34 @@ createjs.deprecate = function(fallbackMethod, name) {
 	 *
 	 * @method removeAllEventListeners
 	 * @param {String} [type] The string type of the event. If omitted, all listeners for all types will be removed.
+	 * @param {String} [mID] A custom monitor ID that can be sent along for the report. 
 	 **/
-	p.removeAllEventListeners = function(type) {
-		if (!type) { this._listeners = this._captureListeners = null; }
-		else {
-			if (this._listeners) { delete(this._listeners[type]); }
+	p.removeAllEventListeners = function(type, mID) {
+		if (!type) { 
+			var count=0;
+			if (this._listeners) {
+				for (var i in this._listeners) {					
+					for (var j in this._listeners[i]) {
+						count++; 
+						// ZIM adds 2 redacted events to every DisplayObject
+						// this redacts those two events and only reports those beyond
+						// type is not specified in dispose() where this happens
+						if (count>2) EventDispatcher.monit("offs", type, this, mID);
+					}
+				}				
+			}
+			this._listeners = this._captureListeners = null; 
+		}
+		else {			
+			if (this._listeners) { 
+				for (var i in this._listeners[type]) {	
+					EventDispatcher.monit("offs", type, this, mID);					
+				}		
+				delete(this._listeners[type]); 
+			}
 			if (this._captureListeners) { delete(this._captureListeners[type]); }
 		}
+		// EventDispatcher.monit("offs", type, this, mID);
 	};
 
 	/**
@@ -833,7 +902,7 @@ createjs.deprecate = function(fallbackMethod, name) {
 				if (o.handleEvent) { o.handleEvent(eventObj); }
 				else { o(eventObj); }                
 				if (eventObj.removed) {
-					this.off(eventObj.type, o, eventPhase==1);
+					this.off(eventObj.type, o, eventPhase==1, "c~clear");
 					eventObj.removed = false;
 				}
 			}
@@ -1018,7 +1087,7 @@ createjs.deprecate = function(fallbackMethod, name) {
 	Ticker._listeners = null;
 	createjs.EventDispatcher.initialize(Ticker); // inject EventDispatcher methods.
 	Ticker._addEventListener = Ticker.addEventListener;
-	Ticker.addEventListener = function() {
+	Ticker.addEventListener = function() {		
 		!Ticker._inited&&Ticker.init();
 		return Ticker._addEventListener.apply(Ticker, arguments);
 	};
@@ -1318,6 +1387,14 @@ createjs.deprecate = function(fallbackMethod, name) {
 		return  Ticker._ticks - (pauseable ? Ticker._pausedTicks : 0);
 	};
 
+	/**
+	 * Returns the class name as a string.
+	 * @method toString
+	 * @static
+	 * @return {String} the name of the class inside [].
+	 **/
+	Ticker.toString = function() {return "[Ticker]"};
+
 
 // private static methods:
 	/**
@@ -1421,7 +1498,6 @@ createjs.deprecate = function(fallbackMethod, name) {
 	Ticker._getTime = function() {
 		return ((now&&now.call(w.performance))||(new Date().getTime())) - Ticker._startTime;
 	};
-
 
 	createjs.Ticker = Ticker;
 }());
@@ -8082,7 +8158,6 @@ createjs.deprecate = function(fallbackMethod, name) {
 (function() {
 	"use strict";
 
-
 // constructor:
 	/**
 	 * A stage is the root level {{#crossLink "Container"}}{{/crossLink}} for a display list. Each time its {{#crossLink "Stage/tick"}}{{/crossLink}}
@@ -8706,7 +8781,6 @@ createjs.deprecate = function(fallbackMethod, name) {
 			this._dispatchMouseEvent(this, "stagemousemove", false, id, o, e);
 			this._dispatchMouseEvent(o.target, "pressmove", true, id, o, e);
 		}
-
 		nextStage&&nextStage._handlePointerMove(id, e, pageX, pageY, null);
 	};
 
@@ -8728,6 +8802,13 @@ createjs.deprecate = function(fallbackMethod, name) {
 			o.posEvtObj = e;
 			o.rawX = pageX;
 			o.rawY = pageY;
+
+			// // testing this 
+			// this._mtx = this.getConcatenatedMatrix(this._mtx).invert();
+			// var pt = this._mtx.transformPoint(o.x, o.y);
+			// this.mouseX = pt.x; 
+			// this.mouseY = pt.y;
+			
 			this.mouseX = o.x; // stage.mouseX versus eventObject.stageX
 			this.mouseY = o.y;
 			this.mouseInBounds = o.inBounds = true;	
@@ -8926,7 +9007,7 @@ createjs.deprecate = function(fallbackMethod, name) {
 		}
         if (this.canvas) {	
     		var o = this._getPointerData(-1);
-
+			
     		// only update if the mouse position has changed. This provides a lot of optimization, but has some trade-offs.
     		if (!o || (!clear && this.mouseX == this._mouseOverX && this.mouseY == this._mouseOverY && this.mouseInBounds)) { return; }
 		
@@ -9064,10 +9145,9 @@ function makeRemotePointers() {
 		if (id==null) id=-1;
 		if (type=="move") stage._handlePointerMove(id, e, x, y);
 		else if (type=="down") stage._handlePointerDown(id, e, x, y);
-		else if (type=="up") stage._handlePointerUp(id, e, false);
+		else if (type=="up") stage._handlePointerUp(id, e, false);		
 	}
 }
-
 
 
 
@@ -13030,10 +13110,10 @@ function makeRemotePointers() {
 	 **/
 	var canvas = (createjs.createCanvas?createjs.createCanvas():document.createElement("canvas"));
 	if (canvas.getContext) {
-        Text._workingContext = canvas.getContext("2d"); 
-        // Text._workingCount=0; 
-        canvas.width = canvas.height = 1;
-    }
+		Text._workingContext = canvas.getContext("2d"); 
+		// Text._workingCount=0; 
+		canvas.width = canvas.height = 1;
+	}
 
 
 // constants:
@@ -13220,67 +13300,172 @@ p._drawText = function(ctx, o, lines) {
 	     this._prepContext(ctx);
 	 }
 	 var lineHeight = this.lineHeight || this.getMeasuredLineHeight();
-
 	 var maxW = 0,
-	 count = 0;
+	 count = 0;	
+
+	 // added test by Dan Zen Dec 2025 for CJK text
+	 var reg = new RegExp("[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]+");
+	 var cjk = reg.test(this.text);	
+
 	 var hardLines = String(this.text).split(/(?:\r\n|\r|\n)/);
 	 for (var i = 0, l = hardLines.length; i < l; i++) {
 	     var str = hardLines[i];
 	     var w = null;
-
 	     if (this.lineWidth != null && (w = ctx.measureText(str).width) > this.lineWidth) {
 	         // text wrapping:
 	         // hanyeah CJK wrapping
 	         var words0;
 	         var words;
 			 // thanks https://littleshell-multimedia.blogspot.com/2017/04/createjs-textfield-cjk-text-wrapping.html
-	         if ((/[\u4e00-\u9fa5]+/).test(str)) { //contains CJK characters
-	             words0 = str.split(/(\s)/);
-	             words = [];
-	             for (var hi = 0; hi < words0.length; hi++) {
-	                 var hs = "";
-	                 for (var hj = 0; hj < words0[hi].length; hj++) {
-	                     var hjs = words0[hi][hj];
-	                     if (hjs.charCodeAt(0) > 255) {
-	                         if (hs != "") {
-	                             words.push(hs);
-	                         }
-	                         words.push(hjs);
-	                         hs = "";
-	                     } else {
-	                         hs += hjs;
-	                     }
-	                 }
-	                 if (hs != "") {
-	                     words.push(hs);
-	                 }
-	             }
-	         } else {
-	             words = str.split(/(\s)/);
-	         }
-	         str = words[0];
-	         w = ctx.measureText(str).width;
+	         if (cjk) {
+				// this original test did not pick up on Japanese
+				// if ((/[\u4e00-\u9fa5]+/).test(str)) { //contains CJK characters
+				if (reg.test(str)) { //contains CJK characters
+					// words0 = str.split(/(\s)/);
+					words0 = str.split(/\s/);
+					words = [];
+					
+					// for (var hi = 0; hi < words0.length; hi++) {
+					// 	var hs = "";
+					// 	for (var hj = 0; hj < words0[hi].length; hj++) {
+					// 		var hjs = words0[hi][hj];
+					// 		if (hjs.charCodeAt(0) > 255) {
+					// 			if (hs != "") {
+					// 				words.push(hs);
+					// 			}							 
+					// 			words.push(hjs);
+					// 			hs = "";
+					// 		} else {
+					// 			hs += hjs;
+					// 		}
+					// 	}
+					// 	if (hs != "") {
+					// 		words.push(hs);
+					// 	}
+					// }
+		
+					// Dan Zen modified to keep spaces but split CJK
+					var words = [];
+					for (var ii=0; ii<words0.length; ii++) {
+						var wo = words0[ii];
+						if (reg.test(wo)) {
+							var la = "";
+							for (var iii=0; iii<wo.length; iii++) {
+								var char = wo[iii];
+								if (reg.test(char)) {                        
+									if (la != "") {
+										words.push(la);
+										la = "";
+									}
+									words.push(char);
+								} else la += char;
+							}
+							if (la != "") words.push(la);
+						} else {
+							words.push(wo);
+						}
+					}
 
-	         for (var j = 1, jl = words.length; j < jl; j += 2) {
-	             // Line needs to wrap:
-	             var wordW = ctx.measureText(words[j] + words[j+1]).width;
-	             if (w + wordW > this.lineWidth) {
-	                 if (paint) { this._drawTextLine(ctx, str, count * lineHeight); }
-	                 if (lines) { lines.push(str); }
-	                 if (w > maxW) { maxW = w; }
-	                 str = words[j+1];
-	                 w = ctx.measureText(str).width;
-	                 count++;
-	             } else {
-	                 str += words[j] + words[j+1];
-	                 w += wordW;
-	             }
-	         }
-	     }
+				} else {					
+					//  words = str.split(/(\s)/);
+					words = str.split(/\s/); // do not keep spaces
+				}
+			} else {
+				words = str.split(/(\s)/); // keep spaces
+			}
+
+			str = words[0];
+			w = ctx.measureText(str).width;
+
+			if (!cjk) {
+				// no CJK words detected in overall text
+				// orignal createjs way with spaces in words array
+				for (var j = 1, jl = words.length; j < jl; j += 2) {
+					// Line needs to wrap:
+					if (words[j+1]==null) words[j+1] = "";
+					var wordW = ctx.measureText(words[j] + words[j+1]).width;
+					if (w + wordW > this.lineWidth) {
+						if (paint) { this._drawTextLine(ctx, str, count * lineHeight); }
+						if (lines) { lines.push(str); }
+						if (w > maxW) { maxW = w; }
+						str = words[j+1];
+						w = ctx.measureText(str).width;
+						count++;
+					} else {
+						str += words[j] + words[j+1];
+						w += wordW;
+					}
+				}
+			} else {			 
+
+				// // original from blob help
+				// for (var j = 1, jl = words.length; j < jl; j += 1) {
+				// 	// Line needs to wrap:
+				// 	var wordW = ctx.measureText(words[j]).width;
+				// 	if (w + wordW > this.lineWidth) {
+				// 		if (paint) {
+				// 			this._drawTextLine(ctx, str, count * lineHeight);
+				// 		}
+				// 		if (lines) {
+				// 			lines.push(str);
+				// 		}
+				// 		if (w > maxW) {
+				// 			maxW = w;
+				// 		}
+				// 		str = words[j];
+				// 		w = ctx.measureText(str).width;
+				// 		count++;
+				// 	} else {
+				// 		str += words[j];
+				// 		w += wordW;
+				// 	}
+				// }
+
+				// Dan Zen modified way - could work on everything but does an extra test on each letter
+				// so only run it if cjk words detected in overall text
+				for (var j = 1, jl = words.length; j < jl; j += 1) {
+					// Line needs to wrap:
+					var wo = words[j];
+					var wordW;
+
+					// probably want to leave space between languages
+					// otherwise there is no space even if there is a space
+					if (wo.match(reg) && words[j-1].match(reg)) {
+						wordW = ctx.measureText(words[j]).width;
+					} else {
+						wordW = ctx.measureText(" " + words[j]).width;
+					}					
+					if (w + wordW > this.lineWidth) {
+						if (paint) {
+							this._drawTextLine(ctx, str, count * lineHeight);
+						}
+						if (lines) {
+							lines.push(str);
+						}
+						if (w > maxW) {
+							maxW = w;
+						}
+						str = words[j];
+						w = ctx.measureText(str).width;
+						count++;
+					} else {
+						// probably want to leave space between languages
+						// otherwise there is no space even if there is a space
+						if (wo.match(reg) && words[j-1].match(reg)) {
+							str += words[j];
+						} else {
+							str += " " + words[j];
+						}	
+						w += wordW;
+					}
+				}
+			}
+		}
+
 	     //end hanyeah CJK wrapping
-	     if (paint) {
-	         this._drawTextLine(ctx, str, count * lineHeight);
-	     }
+		if (paint) {
+			this._drawTextLine(ctx, str, count * lineHeight);
+		}
 	     if (lines) {
 	         lines.push(str);
 	     }
@@ -13298,7 +13483,7 @@ p._drawText = function(ctx, o, lines) {
 	     o.height = count * lineHeight;
 	 }
 	 if (!paint) {
-        ctx.restore();
+		ctx.restore();
 		// Text._workingCount++;
 		// if (Text._workingCount%100!=0) ctx.restore();
 		// else ctx.reset();
@@ -15290,8 +15475,9 @@ p._drawText = function(ctx, o, lines) {
 	p._tick = function(evtObj) {
 		var stage = this.stage;
 		if(stage && stage !== this._oldStage) {
-			this._drawAction && stage.off("drawend", this._drawAction);
-			this._drawAction = stage.on("drawend", this._handleDrawEnd, this);
+			var mID = "c~DOMElement";
+			this._drawAction && stage.off("drawend", this._drawAction, null, mID);
+			this._drawAction = stage.on("drawend", this._handleDrawEnd, this, null, null, null, mID);
 			this._oldStage = stage;
 		}
 		this.DisplayObject__tick(evtObj);
@@ -17491,6 +17677,7 @@ p._drawText = function(ctx, o, lines) {
 	Touch.enable = function(stage, singleTouch, allowDefault, legacy) {
 		if (!stage || !stage.canvas || !Touch.isSupported()) { return false; }
 		if (stage.__touch) { return true; }
+		
 
 		// inject required properties on stage:
 		stage.__touch = {pointers:{}, multitouch:!singleTouch, preventDefault:!allowDefault, count:0};
@@ -17509,10 +17696,10 @@ p._drawText = function(ctx, o, lines) {
                 Touch._enable(stage); 
             } else if (window.PointerEvent || window.MSPointerEvent) { 
                 Touch._IE_enable(stage); 
-            }
+            }			
         } else {
-            if ('ontouchstart' in window || createjs.BrowserDetect.isChrome || createjs.BrowserDetect.isEdge || createjs.BrowserDetect.isFirefox) {                 
-                Touch._enable(stage); 
+            if ('ontouchstart' in window || createjs.BrowserDetect.isChrome || createjs.BrowserDetect.isEdge || createjs.BrowserDetect.isFirefox) {                       
+				Touch._enable(stage); 				
             } else if (window.PointerEvent || window.MSPointerEvent) { 
                 Touch._IE_enable(stage); 
             }
@@ -17557,7 +17744,7 @@ p._drawText = function(ctx, o, lines) {
         canvas.addEventListener("pointerdown", function(e) {
             if (stage.__touch && stage.__touch.preventDefault) return;
             if (e.pointerType=="touch"){
-                stage.enableDOMEvents(false)
+                stage.enableDOMEvents(false)				
             } else if (e.pointerType == "mouse") {
                 stage.enableDOMEvents(true)
             }
@@ -20169,12 +20356,13 @@ p._drawText = function(ctx, o, lines) {
 	p.load = function () {
 		this._createRequest();
 
-		this._request.on("complete", this, this);
-		this._request.on("progress", this, this);
-		this._request.on("loadStart", this, this);
-		this._request.on("abort", this, this);
-		this._request.on("timeout", this, this);
-		this._request.on("error", this, this);
+		var mID = "c~AbstactLoader";
+		this._request.on("complete", this, this, null, null, null, mID);
+		this._request.on("progress", this, this, null, null, null, mID);
+		this._request.on("loadStart", this, this, null, null, null, mID);
+		this._request.on("abort", this, this, null, null, null, mID);
+		this._request.on("timeout", this, this, null, null, null, mID);
+		this._request.on("error", this, this, null, null, null, mID);
 
 		var evt = new createjs.Event("initialize");
 		evt.loader = this._request;
@@ -20451,7 +20639,7 @@ p._drawText = function(ctx, o, lines) {
 		// protected properties
 		this._tagSrcAttribute = "src";
 
-        this.on("initialize", this._updateXHR, this);
+        this.on("initialize", this._updateXHR, this, null, null, null, "c~AbstractMediaLoader");
 	};
 
 	var p = createjs.extend(AbstractMediaLoader, createjs.AbstractLoader);
@@ -22664,11 +22852,12 @@ p._drawText = function(ctx, o, lines) {
 	 * @private
 	 */
 	p._loadItem = function (loader) {
-		loader.on("fileload", this._handleFileLoad, this);
-		loader.on("progress", this._handleProgress, this);
-		loader.on("complete", this._handleFileComplete, this);
-		loader.on("error", this._handleError, this);
-		loader.on("fileerror", this._handleFileError, this);
+		var mID = "c~LoadQueue";
+		loader.on("fileload", this._handleFileLoad, this, null, null, null, mID);
+		loader.on("progress", this._handleProgress, this, null, null, null, mID);
+		loader.on("complete", this._handleFileComplete, this, null, null, null, mID);
+		loader.on("error", this._handleError, this, null, null, null, mID);
+		loader.on("fileerror", this._handleFileError, null, null, null, null, mID);
 		this._currentLoads.push(loader);
 		this._sendFileStart(loader.getItem());
 		loader.load();
@@ -23130,7 +23319,7 @@ p._drawText = function(ctx, o, lines) {
 	 */
 	function BinaryLoader(loadItem) {
 		this.AbstractLoader_constructor(loadItem, true, createjs.Types.BINARY);
-		this.on("initialize", this._updateXHR, this);
+		this.on("initialize", this._updateXHR, this, null, null, null, "c~BinaryLoader");
 	};
 
 	var p = createjs.extend(BinaryLoader, createjs.AbstractLoader);
@@ -23832,7 +24021,7 @@ p._drawText = function(ctx, o, lines) {
 			this._tag = createjs.Elements.img();
 		}
 
-		this.on("initialize", this._updateXHR, this);
+		this.on("initialize", this._updateXHR, this, null, null, null, "c~ImageLoader");
 	};
 
 	var p = createjs.extend(ImageLoader, createjs.AbstractLoader);
@@ -24371,11 +24560,12 @@ p._drawText = function(ctx, o, lines) {
 	 */
 	p._loadManifest = function (json) {
 		if (json && json.manifest) {
+			var mID = "c~ManifestLoader";
 			var queue = this._manifestQueue = new createjs.LoadQueue(this._preferXHR);
-			queue.on("fileload", this._handleManifestFileLoad, this);
-			queue.on("progress", this._handleManifestProgress, this);
-			queue.on("complete", this._handleManifestComplete, this, true);
-			queue.on("error", this._handleManifestError, this, true);
+			queue.on("fileload", this._handleManifestFileLoad, this, null, null, null, mID);
+			queue.on("progress", this._handleManifestProgress, this, null, null, null, mID);
+			queue.on("complete", this._handleManifestComplete, this, true, null, null, mID);
+			queue.on("error", this._handleManifestError, this, true, null, null, mID);
 			for(var i = 0, l = this.plugins.length; i < l; i++) {	// conserve order of plugins
 				queue.installPlugin(this.plugins[i]);
 			}
@@ -24673,11 +24863,12 @@ p._drawText = function(ctx, o, lines) {
 	 */
 	p._loadManifest = function (json) {
 		if (json && json.images) {
+			var mID = "c~SpriteSheetLoader";
 			var queue = this._manifestQueue = new createjs.LoadQueue(this._preferXHR, this._item.path, this._item.crossOrigin);
-			queue.on("complete", this._handleManifestComplete, this, true);
-			queue.on("fileload", this._handleManifestFileLoad, this);
-			queue.on("progress", this._handleManifestProgress, this);
-			queue.on("error", this._handleManifestError, this, true);
+			queue.on("complete", this._handleManifestComplete, this, true, null, null, mID);
+			queue.on("fileload", this._handleManifestFileLoad, this, null, null, null, mID);
+			queue.on("progress", this._handleManifestProgress, this, null, null, null, mID);
+			queue.on("error", this._handleManifestError, this, true, null, null, null, mID);
 			queue.loadManifest(json.images);
 		}
 	};
@@ -26115,9 +26306,10 @@ p._drawText = function(ctx, o, lines) {
 		if (!s._preloadHash[loadItem.src]) { s._preloadHash[loadItem.src] = [];}
 		s._preloadHash[loadItem.src].push(loadItem);
 		if (s._preloadHash[loadItem.src].length == 1) {
+			var mID = "c~Sound";
 			// OJR note this will disallow reloading a sound if loading fails or the source changes
-			loader.on("complete", this._handleLoadComplete, this);
-			loader.on("error", this._handleLoadError, this);
+			loader.on("complete", this._handleLoadComplete, this, null, null, null, mID);
+			loader.on("error", this._handleLoadError, this, null, null, null, mID);
 			s.activePlugin.preload(loader);
 		} else {
 			if (s._preloadHash[loadItem.src][0] == true) {return true;}
@@ -27880,7 +28072,7 @@ p._drawText = function(ctx, o, lines) {
 		this._audioSources[loadItem.src] = true;
 		this._soundInstances[loadItem.src] = [];
 		loader = new this._loaderClass(loadItem);
-		loader.on("complete", this._handlePreloadComplete, this);
+		loader.on("complete", this._handlePreloadComplete, this, null, null, null, "c~AbstractPlugin");
 		this._loaders[loadItem.src] = loader;
 		return loader;
 	};
@@ -27892,7 +28084,7 @@ p._drawText = function(ctx, o, lines) {
 	 * @param {Loader} loader The sound URI to load.
 	 */
 	p.preload = function (loader) {
-		loader.on("error", this._handlePreloadError, this);
+		loader.on("error", this._handlePreloadError, this, null, null, null, "c~AbstractPlugin");
 		loader.load();
 	};
 
@@ -30483,7 +30675,7 @@ p._drawText = function(ctx, o, lines) {
 				tween._prev = tail;
 			}
             tween._status = Tween._inTick ? 1 : 0;
-			if (!Tween._inited && createjs.Ticker) { createjs.Ticker.addEventListener("tick", Tween); Tween._inited = true; }
+			if (!Tween._inited && createjs.Ticker) { createjs.Ticker.addEventListener("tick", Tween, null, "c~-"); Tween._inited = true; }
 		} else if (paused && !tween._paused) {
 			if (target) { target.tweenjs_count--; }
             // tick handles delist if we're in a tick stack and the tween hasn't advanced yet:
