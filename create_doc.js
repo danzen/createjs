@@ -13292,203 +13292,280 @@ function makeRemotePointers() {
 	 * @return {Object}
 	 * @protected
 	 **/
-p._drawText = function(ctx, o, lines) {
-	 var paint = !!ctx;
-	 if (!paint) {
-	     ctx = Text._workingContext;
-	     ctx.save();
-	     this._prepContext(ctx);
-	 }
-	 var lineHeight = this.lineHeight || this.getMeasuredLineHeight();
-	 var maxW = 0,
-	 count = 0;	
+	p._drawText = function(ctx, o, lines) {
+		var paint = !!ctx;
+		if (!paint) {
+			ctx = Text._workingContext;
+			ctx.save();
+			this._prepContext(ctx);
+		}
+		var lineHeight = this.lineHeight || this.getMeasuredLineHeight();
+		var maxW = 0,
+		count = 0;	
 
-	 // added test by Dan Zen Dec 2025 for CJK text
-	 var reg = new RegExp("[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]+");
-	 var cjk = reg.test(this.text);	
+		// added test by Dan Zen Dec 2025 for CJK text
+		var reg = new RegExp("[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]+");	 
 
-	 var hardLines = String(this.text).split(/(?:\r\n|\r|\n)/);
-	 for (var i = 0, l = hardLines.length; i < l; i++) {
-	     var str = hardLines[i];
-	     var w = null;
-	     if (this.lineWidth != null && (w = ctx.measureText(str).width) > this.lineWidth) {
-	         // text wrapping:
-	         // hanyeah CJK wrapping
-	         var words0;
-	         var words;
-			 // thanks https://littleshell-multimedia.blogspot.com/2017/04/createjs-textfield-cjk-text-wrapping.html
-	         if (cjk) {
-				// this original test did not pick up on Japanese
-				// if ((/[\u4e00-\u9fa5]+/).test(str)) { //contains CJK characters
-				if (reg.test(str)) { //contains CJK characters
-					// words0 = str.split(/(\s)/);
-					words0 = str.split(/\s/);
-					words = [];
+		var hardLines = String(this.text).split(/(?:\r\n|\r|\n)/);
+		for (var i = 0, l = hardLines.length; i < l; i++) {
+			var str = hardLines[i];
+			var w = null;
+			var cjk;
+			if (this.lineWidth != null && (w = ctx.measureText(str).width) > this.lineWidth) {
+
+				cjk = reg.test(str);	
+				// text wrapping:
+				// hanyeah CJK wrapping
+				var words0;
+				var words;
+				// thanks https://littleshell-multimedia.blogspot.com/2017/04/createjs-textfield-cjk-text-wrapping.html
+
+							
+				if (cjk) { // contains CJK characters				
 					
-					// for (var hi = 0; hi < words0.length; hi++) {
-					// 	var hs = "";
-					// 	for (var hj = 0; hj < words0[hi].length; hj++) {
-					// 		var hjs = words0[hi][hj];
-					// 		if (hjs.charCodeAt(0) > 255) {
-					// 			if (hs != "") {
-					// 				words.push(hs);
-					// 			}							 
-					// 			words.push(hjs);
-					// 			hs = "";
-					// 		} else {
-					// 			hs += hjs;
+				// 	// words0 = str.split(/(\s)/);
+				// 	words0 = str.split(/\s/);
+				// 	words = [];
+
+				// 	// for (var hi = 0; hi < words0.length; hi++) {
+				// 	// 	var hs = "";
+				// 	// 	for (var hj = 0; hj < words0[hi].length; hj++) {
+				// 	// 		var hjs = words0[hi][hj];
+				// 	// 		if (hjs.charCodeAt(0) > 255) {
+				// 	// 			if (hs != "") {
+				// 	// 				words.push(hs);
+				// 	// 			}							 
+				// 	// 			words.push(hjs);
+				// 	// 			hs = "";
+				// 	// 		} else {
+				// 	// 			hs += hjs;
+				// 	// 		}
+				// 	// 	}
+				// 	// 	if (hs != "") {
+				// 	// 		words.push(hs);
+				// 	// 	}
+				// 	// }
+
+				// 	// Dan Zen modified to keep spaces but split CJK
+				// 	var words = [];
+				// 	for (var ii=0; ii<words0.length; ii++) {
+				// 		var wo = words0[ii];
+				// 		if (reg.test(wo)) {						
+				// 			var la = "";
+				// 			for (var iii=0; iii<wo.length; iii++) {
+				// 				var char = wo[iii];
+				// 				if (reg.test(char)) {         
+				// 					zogr(char)               
+				// 					if (la != "") {
+				// 						words.push(la);
+				// 						la = "";
+				// 					}
+				// 					words.push(char);
+				// 				} else {
+				// 					zogb(char)
+				// 					la += char;
+				// 				}
+				// 			}
+				// 			if (la != "") words.push(la);
+				// 		} else {
+				// 			words.push(wo);
+				// 		}
+				// 	}
+
+					// str = str.replace(/。([^\s])/, "。 $1");
+					// zogb(str)
+
+					words = str.split(/(\s|[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF])/); // keep spaces
+				} else {
+					words = str.split(/(\s)/); // keep spaces
+				}
+
+				str = words[0];
+				w = ctx.measureText(str).width;
+
+				if (!cjk) {
+					// no CJK words detected in overall text
+					// orignal createjs way with spaces in words array
+					for (var j = 1, jl = words.length; j < jl; j += 2) {
+						// Line needs to wrap:
+						if (words[j+1]==null) words[j+1] = "";
+						var wordW = ctx.measureText(words[j] + words[j+1]).width;
+						if (w + wordW > this.lineWidth) {
+							if (paint) { this._drawTextLine(ctx, str, count * lineHeight); }
+							if (lines) { lines.push(str); }
+							if (w > maxW) { maxW = w; }
+							str = words[j+1];
+							w = ctx.measureText(str).width;
+							count++;
+						} else {
+							str += words[j] + words[j+1];
+							w += wordW;
+						}
+					}
+				} else {			 
+
+					// // original from blog help
+					// for (var j = 1, jl = words.length; j < jl; j += 1) {
+					// 	// Line needs to wrap:
+					// 	var wordW = ctx.measureText(words[j]).width;
+					// 	if (w + wordW > this.lineWidth) {
+					// 		if (paint) {
+					// 			this._drawTextLine(ctx, str, count * lineHeight);
 					// 		}
-					// 	}
-					// 	if (hs != "") {
-					// 		words.push(hs);
+					// 		if (lines) {
+					// 			lines.push(str);
+					// 		}
+					// 		if (w > maxW) {
+					// 			maxW = w;
+					// 		}
+					// 		str = words[j];
+					// 		w = ctx.measureText(str).width;
+					// 		count++;
+					// 	} else {
+					// 		str += words[j];
+					// 		w += wordW;
 					// 	}
 					// }
-		
-					// Dan Zen modified to keep spaces but split CJK
-					var words = [];
-					for (var ii=0; ii<words0.length; ii++) {
-						var wo = words0[ii];
-						if (reg.test(wo)) {
-							var la = "";
-							for (var iii=0; iii<wo.length; iii++) {
-								var char = wo[iii];
-								if (reg.test(char)) {                        
-									if (la != "") {
-										words.push(la);
-										la = "";
-									}
-									words.push(char);
-								} else la += char;
+
+					// text: "こんにちはXさんお元気ですか？こんにちはXさんお元気ですか？こんにちはXさんお元気ですか？",
+
+					// Dan Zen modified way - could work on everything but does an extra test on each letter
+					// so only run it if cjk words detected in overall text
+
+					if (words[0] == "") words.shift();
+
+					// add cjk punctuation to word before
+					// note, wrap between cjk characters but not between ckj and english 
+					// and not between 。which does not come under cjk test
+
+					var mod = [];
+					var last = "";
+					var pushed;
+					for (var j=0, jl=words.length; j<jl; j++) {
+						var wo = words[j];
+						pushed = false;
+						if (wo=="" || wo==" ") {
+							if (last) mod.push(last);
+							mod.push(wo);
+							pushed = true;
+							last = "";							
+						} else {					
+							last += wo;							
+							if (wo.match(/\p{P}/u)) { // unicode punctuation
+								mod.push(last);
+								pushed = true;
+								last = "";
 							}
-							if (la != "") words.push(la);
-						} else {
-							words.push(wo);
 						}
 					}
+					if (!pushed) mod.push(wo);
+					words = mod;
+					last = null;					
 
-				} else {					
-					//  words = str.split(/(\s)/);
-					words = str.split(/\s/); // do not keep spaces
-				}
-			} else {
-				words = str.split(/(\s)/); // keep spaces
-			}
+					str = words[0];
+					w = ctx.measureText(str).width;					
 
-			str = words[0];
-			w = ctx.measureText(str).width;
+					for (var j=1, jl=words.length; j<jl; j++) {
+											
+						var wo = words[j];
+						var wordW;
 
-			if (!cjk) {
-				// no CJK words detected in overall text
-				// orignal createjs way with spaces in words array
-				for (var j = 1, jl = words.length; j < jl; j += 2) {
-					// Line needs to wrap:
-					if (words[j+1]==null) words[j+1] = "";
-					var wordW = ctx.measureText(words[j] + words[j+1]).width;
-					if (w + wordW > this.lineWidth) {
-						if (paint) { this._drawTextLine(ctx, str, count * lineHeight); }
-						if (lines) { lines.push(str); }
-						if (w > maxW) { maxW = w; }
-						str = words[j+1];
-						w = ctx.measureText(str).width;
-						count++;
-					} else {
-						str += words[j] + words[j+1];
-						w += wordW;
-					}
-				}
-			} else {			 
+						wordW = ctx.measureText(wo).width;
 
-				// // original from blob help
-				// for (var j = 1, jl = words.length; j < jl; j += 1) {
-				// 	// Line needs to wrap:
-				// 	var wordW = ctx.measureText(words[j]).width;
-				// 	if (w + wordW > this.lineWidth) {
-				// 		if (paint) {
-				// 			this._drawTextLine(ctx, str, count * lineHeight);
-				// 		}
-				// 		if (lines) {
-				// 			lines.push(str);
-				// 		}
-				// 		if (w > maxW) {
-				// 			maxW = w;
-				// 		}
-				// 		str = words[j];
-				// 		w = ctx.measureText(str).width;
-				// 		count++;
-				// 	} else {
-				// 		str += words[j];
-				// 		w += wordW;
-				// 	}
-				// }
-
-				// Dan Zen modified way - could work on everything but does an extra test on each letter
-				// so only run it if cjk words detected in overall text
-				for (var j = 1, jl = words.length; j < jl; j += 1) {
-					// Line needs to wrap:
-					var wo = words[j];
-					var wordW;
-
-					// probably want to leave space between languages
-					// otherwise there is no space even if there is a space
-					if (wo.match(reg) && words[j-1].match(reg)) {
-						wordW = ctx.measureText(words[j]).width;
-					} else {
-						wordW = ctx.measureText(" " + words[j]).width;
-					}					
-					if (w + wordW > this.lineWidth) {
-						if (paint) {
+						if (w + wordW > this.lineWidth) {
+							str = str.replace(/\s$/,"");
 							this._drawTextLine(ctx, str, count * lineHeight);
-						}
-						if (lines) {
-							lines.push(str);
-						}
-						if (w > maxW) {
-							maxW = w;
-						}
-						str = words[j];
-						w = ctx.measureText(str).width;
-						count++;
-					} else {
-						// probably want to leave space between languages
-						// otherwise there is no space even if there is a space
-						if (wo.match(reg) && words[j-1].match(reg)) {
-							str += words[j];
+							if (lines) {
+								lines.push(str);
+							}
+							if (w > maxW) {
+								maxW = w;
+							}
+							last = words[j];
+							if (wo == " ") wo = "";
+							str = wo;
+							w = ctx.measureText(str).width;
+							count++;
 						} else {
-							str += " " + words[j];
-						}	
-						w += wordW;
+							str += words[j];
+							w += wordW;
+							last = str;
+						}
 					}
-				}
+
+					str = last;
+				
+
+					// // old Dan Zen with spaces gone between cjk
+					// for (var j = 1, jl = words.length; j < jl; j += 1) {
+					// 	// Line needs to wrap:
+					// 	var wo = words[j];
+					// 	var wordW;
+
+					// 	// probably want to leave space between languages
+					// 	// otherwise there is no space even if there is a space
+					// 	if (wo.match(reg) && words[j-1].match(reg)) {
+					// 		wordW = ctx.measureText(words[j]).width;
+					// 	} else {
+					// 		wordW = ctx.measureText(" " + words[j]).width;
+					// 	}					
+					// 	if (w + wordW > this.lineWidth) {
+					// 		if (paint) {
+					// 			this._drawTextLine(ctx, str, count * lineHeight);
+					// 		}
+					// 		if (lines) {
+					// 			lines.push(str);
+					// 		}
+					// 		if (w > maxW) {
+					// 			maxW = w;
+					// 		}
+					// 		str = words[j];
+					// 		w = ctx.measureText(str).width;
+					// 		count++;
+					// 	} else {
+					// 		// probably want to leave space between languages
+					// 		// otherwise there is no space even if there is a space
+					// 		if (wo.match(reg) && words[j-1].match(reg)) {
+					// 			str += words[j];
+					// 		} else {
+					// 			str += " " + words[j];
+					// 		}	
+					// 		w += wordW;
+					// 	}
+					// }
+
+				} // end cjk 
+
+			} // end line too big
+
+			//end hanyeah CJK wrapping
+			if (paint) {				
+				this._drawTextLine(ctx, str, count * lineHeight);
 			}
-		}
+			if (lines) {
+				lines.push(str);
+			}
+			if (o && w == null) {
+				w = ctx.measureText(str).width;
+			}
+			if (w > maxW) {
+				maxW = w;
+			}
+			count++;
 
-	     //end hanyeah CJK wrapping
-		if (paint) {
-			this._drawTextLine(ctx, str, count * lineHeight);
-		}
-	     if (lines) {
-	         lines.push(str);
-	     }
-	     if (o && w == null) {
-	         w = ctx.measureText(str).width;
-	     }
-	     if (w > maxW) {
-	         maxW = w;
-	     }
-	     count++;
-	 }
+		} // end hardline loop
 
-	 if (o) {
-	     o.width = maxW;
-	     o.height = count * lineHeight;
-	 }
-	 if (!paint) {
+		if (o) {
+			o.width = maxW;
+			o.height = count * lineHeight;
+		}
+		if (!paint) {
 		ctx.restore();
 		// Text._workingCount++;
 		// if (Text._workingCount%100!=0) ctx.restore();
 		// else ctx.reset();
-	 }
-	 return o;
+		}
+		return o;
 	};
     
     /**
