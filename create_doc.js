@@ -17733,7 +17733,9 @@ function makeRemotePointers() {
 	Touch.isSupported = function() {
 		return !!(('ontouchstart' in window) // iOS & Android
             || (window.MSPointerEvent && window.navigator.msMaxTouchPoints > 0) // IE10
-			|| (window.PointerEvent && window.navigator.maxTouchPoints > 0)); // IE11+
+			|| (window.PointerEvent)); // IE11+
+			// some boards were reporting window.navigator.maxTouchPoints > 0 as false - Dan Zen change 2026
+			// || (window.PointerEvent && window.navigator.maxTouchPoints > 0)); // IE11+
 	};
 
 	/**
@@ -17775,11 +17777,22 @@ function makeRemotePointers() {
                 Touch._IE_enable(stage); 
             }			
         } else {
-            if ('ontouchstart' in window || createjs.BrowserDetect.isChrome || createjs.BrowserDetect.isEdge || createjs.BrowserDetect.isFirefox) {                       
-				Touch._enable(stage); 				
-            } else if (window.PointerEvent || window.MSPointerEvent) { 
+
+			if (window.PointerEvent || window.MSPointerEvent) { 
                 Touch._IE_enable(stage); 
-            }
+            } else if ('ontouchstart' in window || createjs.BrowserDetect.isChrome || createjs.BrowserDetect.isEdge || createjs.BrowserDetect.isFirefox) {                       
+			 	Touch._enable(stage); 
+			}
+
+			// switched priority as per Ferudun/AI suggestion as "ontouchstart" in window was not always working
+			// could possibly replace that with typeof window.TouchEvent !== 'undefined'
+			// but consensus is we should be prioritizing pointer events - Dan Zen 2026
+
+            // if ('ontouchstart' in window || createjs.BrowserDetect.isChrome || createjs.BrowserDetect.isEdge || createjs.BrowserDetect.isFirefox) {                       
+			// 	Touch._enable(stage); 				
+            // } else if (window.PointerEvent || window.MSPointerEvent) { 
+            //     Touch._IE_enable(stage); 
+            // }
         }
         
 		return true;
