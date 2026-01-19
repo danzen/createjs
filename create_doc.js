@@ -154,36 +154,6 @@ createjs.promote = function(subclass, prefix) {
 };
 
 //##############################################################################
-// indexOf.js
-//##############################################################################
-
-/**
- * @class Utility Methods
- */
-
-/**
- * Finds the first occurrence of a specified value searchElement in the passed in array, and returns the index of
- * that value.  Returns -1 if value is not found.
- *
- *      var i = createjs.indexOf(myArray, myElementToFind);
- *
- * @method indexOf
- * @param {Array} array Array to search for searchElement
- * @param searchElement Element to find in array.
- * @return {Number} The first index of searchElement in array.
- */
-createjs.indexOf = function (array, searchElement){
-	"use strict";
-
-	for (var i = 0,l=array.length; i < l; i++) {
-		if (searchElement === array[i]) {
-			return i;
-		}
-	}
-	return -1;
-};
-
-//##############################################################################
 // UID.js
 //##############################################################################
 
@@ -1290,7 +1260,7 @@ createjs.deprecate = function(fallbackMethod, name) {
 	 **/
 	Ticker.reset = function() {
 		if (Ticker._raf) {
-			var f = window.cancelAnimationFrame || window.webkitCancelAnimationFrame || window.mozCancelAnimationFrame || window.oCancelAnimationFrame || window.msCancelAnimationFrame;
+			var f = window.cancelAnimationFrame;
 			f&&f(Ticker._timerId);
 		} else {
 			clearTimeout(Ticker._timerId);
@@ -1444,7 +1414,7 @@ createjs.deprecate = function(fallbackMethod, name) {
 
 		var mode = Ticker.timingMode;
 		if (mode == Ticker.RAF_SYNCHED || mode == Ticker.RAF) {
-			var f = window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.oRequestAnimationFrame || window.msRequestAnimationFrame;
+			var f = window.requestAnimationFrame;
 			if (f) {
 				Ticker._timerId = f(mode == Ticker.RAF ? Ticker._handleRAF : Ticker._handleSynch);
 				Ticker._raf = true;
@@ -7612,7 +7582,7 @@ createjs.deprecate = function(fallbackMethod, name) {
 		}
 		// Note: a lot of duplication with addChildAt, but push is WAY faster than splice.
 		var par=child.parent, silent = par === this;
-		par&&par._removeChildAt(createjs.indexOf(par.children, child), silent);
+		par&&par._removeChildAt(par.children.indexOf(child), silent);
 		child.parent = this;
 		this.children.push(child);
 		if (!silent) { child.dispatchEvent("added"); }
@@ -7652,7 +7622,7 @@ createjs.deprecate = function(fallbackMethod, name) {
 			return arguments[l-2];
 		}
 		var par=child.parent, silent = par === this;
-		par&&par._removeChildAt(createjs.indexOf(par.children, child), silent);
+		par&&par._removeChildAt(par.children.indexOf(child), silent);
 		child.parent = this;
 		this.children.splice(index, 0, child);
 		if (!silent) { child.dispatchEvent("added"); }
@@ -7683,7 +7653,7 @@ createjs.deprecate = function(fallbackMethod, name) {
 			for (var i=0; i<l; i++) { good = good && this.removeChild(arguments[i]); }
 			return good;
 		}
-		return this._removeChildAt(createjs.indexOf(this.children, child));
+		return this._removeChildAt(this.children.indexOf(child));
 	};
 
 	/**
@@ -7790,7 +7760,7 @@ createjs.deprecate = function(fallbackMethod, name) {
 	 * @return {Number} The index of the specified child. -1 if the child is not found.
 	 **/
 	p.getChildIndex = function(child) {
-		return createjs.indexOf(this.children, child);
+		return this.children.indexOf(child);
 	};
 
 	/**
@@ -8718,8 +8688,10 @@ createjs.deprecate = function(fallbackMethod, name) {
 		try { bounds = e.getBoundingClientRect(); } // this can fail on disconnected DOM elements in IE9
 		catch (err) { bounds = {top: e.offsetTop, left: e.offsetLeft, width:e.offsetWidth, height:e.offsetHeight}; }
 
-		var offX = (window.pageXOffset || document.scrollLeft || 0) - (document.clientLeft || document.body.clientLeft || 0);
-		var offY = (window.pageYOffset || document.scrollTop || 0) - (document.clientTop  || document.body.clientTop  || 0);
+		//var offX = window.scrollX; // would be nice to use window.scrollX but zim.scrollX(num, time) overrides it
+		var offX = (typeof window.scrollX === 'function' ? window.scrollX() : window.scrollX);
+		//var offY = window.scrollY; // would be nice to use window.scrollX but zim.scrollY(num, time) overrides it
+		var offY = (typeof window.scrollY === 'function' ? window.scrollY() : window.scrollY);
 
 		var styles = window.getComputedStyle ? getComputedStyle(e,null) : e.currentStyle; // IE <9 compatibility.
 		var padL = parseInt(styles.paddingLeft)+parseInt(styles.borderLeftWidth);
@@ -8753,7 +8725,6 @@ createjs.deprecate = function(fallbackMethod, name) {
 	 * @param {MouseEvent} e
 	 **/
 	p._handleMouseMove = function(e) {
-		if(!e){ e = window.event; }
 		this._handlePointerMove(-1, e, e.pageX, e.pageY);
 	};
 
@@ -10596,7 +10567,7 @@ function makeRemotePointers() {
 		var gl;
 
 		try {
-			gl = canvas.getContext("webgl", options) || canvas.getContext("experimental-webgl", options);
+			gl = canvas.getContext("webgl", options);
 		} catch (e) {
 			// don't do anything in catch, null check will handle it
 		}
@@ -15383,7 +15354,7 @@ function makeRemotePointers() {
 
 		var style = htmlElement.style;
 		style.position = "absolute";
-		style.transformOrigin = style.WebkitTransformOrigin = style.msTransformOrigin = style.MozTransformOrigin = style.OTransformOrigin = "0% 0%";
+		style.transformOrigin = "0% 0%";
 
 
 	// public properties:
@@ -15581,8 +15552,7 @@ function makeRemotePointers() {
 
 		if (!oldMtx || !oldMtx.equals(mtx)) {
 			var str = "matrix(" + (mtx.a*n|0)/n +","+ (mtx.b*n|0)/n +","+ (mtx.c*n|0)/n +","+ (mtx.d*n|0)/n +","+ (mtx.tx+0.5|0);
-			style.transform = style.WebkitTransform = style.OTransform = style.msTransform = str +","+ (mtx.ty+0.5|0) +")";
-			style.MozTransform = str +"px,"+ (mtx.ty+0.5|0) +"px)";
+			style.transform = str +","+ (mtx.ty+0.5|0) +")";
 			if (!oldProps) { oldProps = this._oldProps = new createjs.DisplayProps(true, null); }
 			oldProps.matrix.copy(mtx);
 		}
@@ -17700,24 +17670,24 @@ function makeRemotePointers() {
 
 // constructor:
 	/**
- * Global utility for working with multi-touch enabled devices in EaselJS. Currently supports W3C Touch API (iOS and
- * modern Android browser) and the Pointer API (IE), including ms-prefixed events in IE10, and unprefixed in IE11.
- *
- * Ensure that you {{#crossLink "Touch/disable"}}{{/crossLink}} touch when cleaning up your application. You do not have
- * to check if touch is supported to enable it, as it will fail gracefully if it is not supported.
- *
- * <h4>Example</h4>
- *
- *      var stage = new createjs.Stage("canvasId");
- *      createjs.Touch.enable(stage);
- *
- * <strong>Note:</strong> It is important to disable Touch on a stage that you are no longer using:
- *
- *      createjs.Touch.disable(stage);
- *
- * @class Touch
- * @static
- **/
+	 * Global utility for working with touch and pointer input in EaselJS. Uses the modern
+	 * Pointer Events API which unifies mouse, touch, and pen input into a single event model.
+	 *
+	 * Ensure that you {{#crossLink "Touch/disable"}}{{/crossLink}} touch when cleaning up your application.
+	 * You do not have to check if touch is supported to enable it, as it will fail gracefully if it is not supported.
+	 *
+	 * <h4>Example</h4>
+	 *
+	 *      var stage = new createjs.Stage("canvasId");
+	 *      createjs.Touch.enable(stage);
+	 *
+	 * <strong>Note:</strong> It is important to disable Touch on a stage that you are no longer using:
+	 *
+	 *      createjs.Touch.disable(stage);
+	 *
+	 * @class Touch
+	 * @static
+	 **/
 	function Touch() {
 		throw "Touch cannot be instantiated";
 	}
@@ -17725,76 +17695,43 @@ function makeRemotePointers() {
 
 // public static methods:
 	/**
-	 * Returns `true` if touch is supported in the current browser.
+	 * Returns `true` if pointer events are supported in the current browser.
 	 * @method isSupported
-	 * @return {Boolean} Indicates whether touch is supported in the current browser.
+	 * @return {Boolean} Indicates whether pointer events are supported in the current browser.
 	 * @static
 	 **/
 	Touch.isSupported = function() {
-		return !!(('ontouchstart' in window) // iOS & Android
-            || (window.MSPointerEvent && window.navigator.msMaxTouchPoints > 0) // IE10
-			|| (window.PointerEvent)); // IE11+
-			// some boards were reporting window.navigator.maxTouchPoints > 0 as false - Dan Zen change 2026
-			// || (window.PointerEvent && window.navigator.maxTouchPoints > 0)); // IE11+
+		return !!window.PointerEvent;
 	};
 
 	/**
-	 * Enables touch interaction for the specified EaselJS {{#crossLink "Stage"}}{{/crossLink}}. Currently supports iOS
-	 * (and compatible browsers, such as modern Android browsers), and IE10/11. Supports both single touch and
-	 * multi-touch modes. Extends the EaselJS {{#crossLink "MouseEvent"}}{{/crossLink}} model, but without support for
+	 * Enables touch/pointer interaction for the specified EaselJS {{#crossLink "Stage"}}{{/crossLink}}.
+	 * Supports both single touch and multi-touch modes using the modern Pointer Events API.
+	 * Extends the EaselJS {{#crossLink "MouseEvent"}}{{/crossLink}} model, but without support for
 	 * double click or over/out events. See the MouseEvent {{#crossLink "MouseEvent/pointerId:property"}}{{/crossLink}}
 	 * for more information.
 	 * @method enable
 	 * @param {Stage} stage The {{#crossLink "Stage"}}{{/crossLink}} to enable touch on.
 	 * @param {Boolean} [singleTouch=false] If `true`, only a single touch will be active at a time.
-     * @param {Boolean} [allowDefault=false] If `true`, then default gesture actions (ex. scrolling, zooming) will be
+	 * @param {Boolean} [allowDefault=false] If `true`, then default gesture actions (ex. scrolling, zooming) will be
 	 * allowed when the user is interacting with the target canvas.
-     * @param {Boolean} [legacy=false] If `true`, the touch is based on MSPointerEvent (except for iOS)
 	 * @return {Boolean} Returns `true` if touch was successfully enabled on the target stage.
 	 * @static
 	 **/
-	Touch.enable = function(stage, singleTouch, allowDefault, legacy) {
+	Touch.enable = function(stage, singleTouch, allowDefault) {
 		if (!stage || !stage.canvas || !Touch.isSupported()) { return false; }
 		if (stage.__touch) { return true; }
-		
 
 		// inject required properties on stage:
-		stage.__touch = {pointers:{}, multitouch:!singleTouch, preventDefault:!allowDefault, count:0};
+		stage.__touch = {
+			pointers: {},
+			activeIDs: {},
+			multitouch: !singleTouch,
+			preventDefault: !allowDefault,
+			count: 0
+		};
 
-		// note that in the future we may need to disable the standard mouse event model before adding
-		// these to prevent duplicate calls. It doesn't seem to be an issue with iOS devices though.
-        
-        // Dan Zen adjusted to change IOS touch to the default for Chrome, Firefox and Edge - 3/27/21 
-        // Renamed Touch._IOS_enable, Touch._IOS_disable and Touch._IOS_handleEvent 
-        // to Touch._enable, Touch._disable and Touch._handleEvent 
-        // This seems to solve the problems discussed in https://github.com/CreateJS/EaselJS/issues/997
-        // Thanks to Ferudun for the testing and suggestions
-		
-        if (legacy) { // before the changes
-            if ('ontouchstart' in window) { 
-                Touch._enable(stage); 
-            } else if (window.PointerEvent || window.MSPointerEvent) { 
-                Touch._IE_enable(stage); 
-            }			
-        } else {
-
-			if (window.PointerEvent || window.MSPointerEvent) { 
-                Touch._IE_enable(stage); 
-            } else if ('ontouchstart' in window || createjs.BrowserDetect.isChrome || createjs.BrowserDetect.isEdge || createjs.BrowserDetect.isFirefox) {                       
-			 	Touch._enable(stage); 
-			}
-
-			// switched priority as per Ferudun/AI suggestion as "ontouchstart" in window was not always working
-			// could possibly replace that with typeof window.TouchEvent !== 'undefined'
-			// but consensus is we should be prioritizing pointer events - Dan Zen 2026
-
-            // if ('ontouchstart' in window || createjs.BrowserDetect.isChrome || createjs.BrowserDetect.isEdge || createjs.BrowserDetect.isFirefox) {                       
-			// 	Touch._enable(stage); 				
-            // } else if (window.PointerEvent || window.MSPointerEvent) { 
-            //     Touch._IE_enable(stage); 
-            // }
-        }
-        
+		Touch._enable(stage);
 		return true;
 	};
 
@@ -17805,258 +17742,157 @@ function makeRemotePointers() {
 	 * @static
 	 **/
 	Touch.disable = function(stage) {
-		if (!stage||!stage.__touch) { return; }
-		if ('ontouchstart' in window || createjs.BrowserDetect.isChrome || createjs.BrowserDetect.isFirefox) { Touch._disable(stage); }
-		else if (window.PointerEvent || window.MSPointerEvent) { Touch._IE_disable(stage); }
-
+		if (!stage || !stage.__touch) { return; }
+		Touch._disable(stage);
 		delete stage.__touch;
 	};
 
 
 // Private static methods:
+
 	/**
+	 * Enables pointer event listeners on the stage canvas.
 	 * @method _enable
-	 * @protected
 	 * @param {Stage} stage
+	 * @protected
 	 * @static
 	 **/
 	Touch._enable = function(stage) {
 		var canvas = stage.canvas;
-		var f = stage.__touch.f = function(e) { Touch._handleEvent(stage,e); };
-        // added by Ferudun Veral and Dan Zen 6/1/21
-        // to prevent double events on touchscreens
-        // and yet allow canvas to scrolled on mobile when allowDefault is true
-        // This swaps to dom events if starting to use mouse 
-        // or to no dom events if starting to use touch
-        // The dom events have a check at the start and do nothing if already at the specified state
-        // An alternative could be to flag that touch has happened and exit dom event 
-        // but would have to reset flag on the exit event and there are different events so this approach is more obvious
-        canvas.addEventListener("pointerdown", function(e) {
-            if (stage.__touch && stage.__touch.preventDefault) return;
-            if (e.pointerType=="touch"){
-                stage.enableDOMEvents(false)				
-            } else if (e.pointerType == "mouse") {
-                stage.enableDOMEvents(true)
-            }
-        }, false);
-		canvas.addEventListener("touchstart", f, {passive: false}); // avoiding error - did not test for older browsers with capture expectations
-		canvas.addEventListener("touchmove", f, {passive: false});
-		canvas.addEventListener("touchend", f, false);
-		canvas.addEventListener("touchcancel", f, false);       
-        
+		var f = stage.__touch.f = function(e) { Touch._handleEvent(stage, e); };
+
+		// Prevent tap highlight on touch devices
+		canvas.style.webkitTapHighlightColor = "transparent";
+
+		// Add pointer event listeners
+		canvas.addEventListener("pointerdown", f, false);
+		window.addEventListener("pointermove", f, false);
+		window.addEventListener("pointerup", f, false);
+		window.addEventListener("pointercancel", f, false);
+
+		// Disable touch actions if preventDefault is enabled
+		if (stage.__touch.preventDefault) {
+			canvas.style.touchAction = "none";
+		}
 	};
 
 	/**
+	 * Removes pointer event listeners from the stage canvas.
 	 * @method _disable
-	 * @protected
 	 * @param {Stage} stage
+	 * @protected
 	 * @static
 	 **/
 	Touch._disable = function(stage) {
-		var canvas = stage.canvas;
-		if (!canvas) { return; }
 		var f = stage.__touch.f;
-		canvas.removeEventListener("touchstart", f, {passive: false}); // not sure if this is right...
-		canvas.removeEventListener("touchmove", f, {passive: false});
-		canvas.removeEventListener("touchend", f, false);
-		canvas.removeEventListener("touchcancel", f, false);
+
+		window.removeEventListener("pointermove", f, false);
+		window.removeEventListener("pointerup", f, false);
+		window.removeEventListener("pointercancel", f, false);
+
+		if (stage.canvas) {
+			stage.canvas.removeEventListener("pointerdown", f, false);
+		}
 	};
 
 	/**
-	 * @method _IOS_handleEvent
+	 * Handles pointer events and routes them to the appropriate stage methods.
+	 * @method _handleEvent
 	 * @param {Stage} stage
-	 * @param {Object} e The event to handle
+	 * @param {PointerEvent} e The pointer event to handle.
 	 * @protected
 	 * @static
 	 **/
 	Touch._handleEvent = function(stage, e) {
 		if (!stage) { return; }
-		if (stage.__touch && stage.__touch.preventDefault) { e.preventDefault&&e.preventDefault(); }
-		var touches = e.changedTouches;
-		var type = e.type;
-		for (var i= 0,l=touches.length; i<l; i++) {
-			var touch = touches[i];
-			var id = touch.identifier;
-			if (touch.target != stage.canvas) { continue; }
 
-			if (type === "touchstart") {
-				this._handleStart(stage, id, e, touch.pageX, touch.pageY);
-			} else if (type === "touchmove") {
-				this._handleMove(stage, id, e, touch.pageX, touch.pageY);
-			} else if (type === "touchend" || type === "touchcancel") {
-				this._handleEnd(stage, id, e);
-			}
-		}              
-	};
-
-	/**
-	 * @method _IE_enable
-	 * @protected
-	 * @param {Stage} stage
-	 * @static
-	 **/
-
-
-	Touch._IE_enable = function(stage) {
-		var canvas = stage.canvas;
-		var f = stage.__touch.f = function(e) { Touch._IE_handleEvent(stage,e); };
-        
-        // Dan Zen added this to stop flashing in Chrome Dec 30, 2019
-        // thanks Ferudun Vural for report [left in for legacy Chrome]
-        canvas.style["-webkit-tap-highlight-color"] = "transparent";
-
-		if (window.PointerEvent === undefined) {
-			canvas.addEventListener("MSPointerDown", f, false);
-			window.addEventListener("MSPointerMove", f, false);
-			window.addEventListener("MSPointerUp", f, false);
-			window.addEventListener("MSPointerCancel", f, false);
-			if (stage.__touch && stage.__touch.preventDefault) { canvas.style.msTouchAction = "none"; }
-		} else {
-			canvas.addEventListener("pointerdown", f, false);
-			window.addEventListener("pointermove", f, false);
-			window.addEventListener("pointerup", f, false);
-			window.addEventListener("pointercancel", f, false);
-			if (stage.__touch && stage.__touch.preventDefault) { canvas.style.touchAction = "none"; }
-
+		var touch = stage.__touch;
+		if (touch.preventDefault) {
+			e.preventDefault && e.preventDefault();
 		}
-		stage.__touch.activeIDs = {};
 
-	};
-
-
-	/**
-	 * @method _IE_disable
-	 * @protected
-	 * @param {Stage} stage
-	 * @static
-	 **/
-
-
-	Touch._IE_disable = function(stage) {
-		var f = stage.__touch.f;
-
-		if (window.PointerEvent === undefined) {
-			window.removeEventListener("MSPointerMove", f, false);
-			window.removeEventListener("MSPointerUp", f, false);
-			window.removeEventListener("MSPointerCancel", f, false);
-			if (stage.canvas) {
-				stage.canvas.removeEventListener("MSPointerDown", f, false);
-			}
-		} else {
-			window.removeEventListener("pointermove", f, false);
-			window.removeEventListener("pointerup", f, false);
-			window.removeEventListener("pointercancel", f, false);
-			if (stage.canvas) {
-				stage.canvas.removeEventListener("pointerdown", f, false);
-			}
-		}
-	};
-
-
-
-	/**
-	 * @method _IE_handleEvent
-	 * @param {Stage} stage
-	 * @param {Object} e The event to handle.
-	 * @protected
-	 * @static
-	 **/
-
-
-	Touch._IE_handleEvent = function(stage, e) {
-		if (!stage) { return; }
-		if (stage.__touch && stage.__touch.preventDefault) { e.preventDefault && e.preventDefault(); }
 		var type = e.type;
 		var id = e.pointerId;
-		var ids = stage.__touch.activeIDs;
+		var ids = touch.activeIDs;
 
-		if (type === "MSPointerDown" || type === "pointerdown") {
-			if (e.srcElement != stage.canvas) { return; }
+		if (type === "pointerdown") {
+			if (e.target !== stage.canvas) { return; }
 			ids[id] = true;
 			this._handleStart(stage, id, e, e.pageX, e.pageY);
-            
-            // Added by Ferudun Vural - tested by Dan Zen [left in for legacy chrome]
-            // only enables or disables events when switching between touch and mouse
-            // does not affect every touch
-                        
-            switch(e.pointerType) {
-              case 'mouse':
-                stage.enableDOMEvents(true);
-                break;
-              case 'touch':
-                stage.enableDOMEvents(false);
-                break;
-              case 'pen':
-                break;
-              default:
-                break;
-            }
 
-		} else if (ids[id]) { // it's an id we're watching
-			if (type === "MSPointerMove" || type === "pointermove") {
+			// Switch DOM events based on pointer type to prevent double events
+			if (e.pointerType === "mouse") {
+				stage.enableDOMEvents(true);
+			} else if (e.pointerType === "touch") {
+				stage.enableDOMEvents(false);
+			}
+
+		} else if (ids[id]) {
+			if (type === "pointermove") {
 				this._handleMove(stage, id, e, e.pageX, e.pageY);
-			} else if (type === "MSPointerUp" || type === "MSPointerCancel"
-					|| type === "pointerup" || type === "pointercancel") {
-				delete(ids[id]);
+			} else if (type === "pointerup" || type === "pointercancel") {
+				delete ids[id];
 				this._handleEnd(stage, id, e);
 			}
 		}
 	};
 
 	/**
+	 * Handles the start of a pointer interaction.
 	 * @method _handleStart
 	 * @param {Stage} stage
 	 * @param {String|Number} id
-	 * @param {Object} e
+	 * @param {PointerEvent} e
 	 * @param {Number} x
 	 * @param {Number} y
 	 * @protected
+	 * @static
 	 **/
-
-
-
 	Touch._handleStart = function(stage, id, e, x, y) {
 		var props = stage.__touch;
 		if (!props.multitouch && props.count) { return; }
+
 		var ids = props.pointers;
 		if (ids[id]) { return; }
+
 		ids[id] = true;
 		props.count++;
 		stage._handlePointerDown(id, e, x, y);
 	};
 
 	/**
+	 * Handles pointer movement.
 	 * @method _handleMove
 	 * @param {Stage} stage
 	 * @param {String|Number} id
-	 * @param {Object} e
+	 * @param {PointerEvent} e
 	 * @param {Number} x
 	 * @param {Number} y
 	 * @protected
+	 * @static
 	 **/
-
 	Touch._handleMove = function(stage, id, e, x, y) {
 		if (!stage.__touch.pointers[id]) { return; }
 		stage._handlePointerMove(id, e, x, y);
 	};
 
 	/**
+	 * Handles the end of a pointer interaction.
 	 * @method _handleEnd
 	 * @param {Stage} stage
 	 * @param {String|Number} id
-	 * @param {Object} e
+	 * @param {PointerEvent} e
 	 * @protected
+	 * @static
 	 **/
-
-
 	Touch._handleEnd = function(stage, id, e) {
-		// TODO: cancel should be handled differently for proper UI (ex. an up would trigger a click, a cancel would more closely resemble an out).
 		var props = stage.__touch;
 		var ids = props.pointers;
 		if (!ids[id]) { return; }
+
 		props.count--;
 		stage._handlePointerUp(id, e, true);
-		delete(ids[id]);
+		delete ids[id];
 	};
 
 
@@ -19340,7 +19176,7 @@ function makeRemotePointers() {
 		// Drop the query string
 		var queryIndex = path.indexOf("?");
 		if (queryIndex > -1) {
-			path = path.substr(0, queryIndex);
+			path = path.slice(0, queryIndex);
 		}
 
 		// Absolute
@@ -19374,7 +19210,7 @@ function makeRemotePointers() {
 		}
 		var params = [];
 		for (var n in data) {
-			params.push(n + "=" + escape(data[n]));
+    params.push(n + "=" + encodeURIComponent(data[n]));
 		}
 		if (query) {
 			params = params.concat(query);
@@ -19475,7 +19311,7 @@ function makeRemotePointers() {
 			style.position = "absolute";
 			style.width = s.container.style.height = "10px";
 			style.overflow = "hidden";
-			style.transform = style.msTransform = style.webkitTransform = style.oTransform = "translate(-10px, -10px)"; //LM: Not working
+			style.transform = "translate(-10px, -10px)";
 			s.getBody().appendChild(s.container);
 		}
 		s.container.appendChild(el);
@@ -19563,26 +19399,13 @@ function makeRemotePointers() {
 	s.parseXML = function (text) {
 		var xml = null;
 		// CocoonJS does not support XML parsing with either method.
-
 		// Most browsers will use DOMParser
-		// IE fails on certain SVG files, so we have a fallback below.
 		try {
 			if (window.DOMParser) {
 				var parser = new DOMParser();
 				xml = parser.parseFromString(text, "text/xml");
 			}
 		} catch (e) {
-		}
-
-		// Fallback for IE support.
-		if (!xml) {
-			try {
-				xml = new ActiveXObject("Microsoft.XMLDOM");
-				xml.async = false;
-				xml.loadXML(text);
-			} catch (e) {
-				xml = null;
-			}
 		}
 
 		return xml;
@@ -21111,11 +20934,9 @@ function makeRemotePointers() {
 
 // constructor
 	/**
-	 * A preloader that loads items using XHR requests, usually XMLHttpRequest. However XDomainRequests will be used
-	 * for cross-domain requests if possible, and older versions of IE fall back on to ActiveX objects when necessary.
+	 * A preloader that loads items using XHR requests (XMLHttpRequest).
 	 * XHR requests load the content as text or binary data, provide progress and consistent completion events, and
-	 * can be canceled during load. Note that XHR is not supported in IE 6 or earlier, and is not recommended for
-	 * cross-domain loading.
+	 * can be canceled during load.
 	 * @class XHRRequest
 	 * @constructor
 	 * @param {Object} item The object that defines the file to load. Please see the {{#crossLink "LoadQueue/loadFile"}}{{/crossLink}}
@@ -21129,7 +20950,7 @@ function makeRemotePointers() {
 		/**
 		 * A reference to the XHR request used to load the content.
 		 * @property _request
-		 * @type {XMLHttpRequest | XDomainRequest | ActiveX.XMLHTTP}
+		 * @type {XMLHttpRequest}
 		 * @private
 		 */
 		this._request = null;
@@ -21189,23 +21010,6 @@ function makeRemotePointers() {
 	};
 
 	var p = createjs.extend(XHRRequest, createjs.AbstractRequest);
-
-// static properties
-	/**
-	 * A list of XMLHTTP object IDs to try when building an ActiveX object for XHR requests in earlier versions of IE.
-	 * @property ACTIVEX_VERSIONS
-	 * @type {Array}
-	 * @since 0.4.2
-	 * @private
-	 */
-	XHRRequest.ACTIVEX_VERSIONS = [
-		"Msxml2.XMLHTTP.6.0",
-		"Msxml2.XMLHTTP.5.0",
-		"Msxml2.XMLHTTP.4.0",
-		"MSXML2.XMLHTTP.3.0",
-		"MSXML2.XMLHTTP",
-		"Microsoft.XMLHTTP"
-	];
 
 // Public methods
 	/**
@@ -21422,20 +21226,8 @@ function makeRemotePointers() {
 		this._response = this._getResponse();
 		// Convert arraybuffer back to blob
 		if (this._responseType === 'arraybuffer') {
-			try {
-				this._response = new Blob([this._response]);
-			} catch (e) {
-				// Fallback to use BlobBuilder if Blob constructor is not supported
-				// Tested on Android 2.3 ~ 4.2 and iOS5 safari
-				window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder || window.MozBlobBuilder || window.MSBlobBuilder;
-				if (e.name === 'TypeError' && window.BlobBuilder) {
-					var builder = new BlobBuilder();
-					builder.append(this._response);
-					this._response = builder.getBlob();
-				}
-			}
+			this._response = new Blob([this._response]);
 		}
-		this._clean();
 
 		this.dispatchEvent(new createjs.Event("complete"));
 	};
@@ -21514,10 +21306,8 @@ function makeRemotePointers() {
 	};
 
 	/**
-	 * Create an XHR request. Depending on a number of factors, we get totally different results.
-	 * <ol><li>Some browsers get an <code>XDomainRequest</code> when loading cross-domain.</li>
-	 *      <li>XMLHttpRequest are created when available.</li>
-	 *      <li>ActiveX.XMLHTTP objects are used in older IE browsers.</li>
+	 * Create an XHR request. Depending on a number of factors, we get different results.
+	 * <ol><li>XMLHttpRequest is used for all requests.</li>
 	 *      <li>Text requests override the mime type if possible</li>
 	 *      <li>Origin headers are sent for crossdomain requests in some browsers.</li>
 	 *      <li>Binary loads set the response type to "arraybuffer"</li></ol>
@@ -21535,22 +21325,6 @@ function makeRemotePointers() {
 		var req = null;
 		if (window.XMLHttpRequest) {
 			req = new XMLHttpRequest();
-			// This is 8 or 9, so use XDomainRequest instead.
-			if (crossdomain && req.withCredentials === undefined && window.XDomainRequest) {
-				req = new XDomainRequest();
-			}
-		} else { // Old IE versions use a different approach
-			for (var i = 0, l = s.ACTIVEX_VERSIONS.length; i < l; i++) {
-				var axVersion = s.ACTIVEX_VERSIONS[i];
-				try {
-					req = new ActiveXObject(axVersion);
-					break;
-				} catch (e) {
-				}
-			}
-			if (req == null) {
-				return false;
-			}
 		}
 
 		// Default to utf-8 for Text requests.
@@ -21789,8 +21563,8 @@ function makeRemotePointers() {
 	 *
 	 * <b>Plugins</b><br />
 	 * LoadQueue has a simple plugin architecture to help process and preload content. For example, to preload audio,
-	 * make sure to install the <a href="https://soundjs.com">SoundJS</a> Sound class, which will help load HTML audio,
-	 * Flash audio, and WebAudio files. This should be installed <strong>before</strong> loading any audio files.
+	 * make sure to install the <a href="https://soundjs.com">SoundJS</a> Sound class, which will help load HTML audio
+	 * and WebAudio files. This should be installed <strong>before</strong> loading any audio files.
 	 *
 	 *      queue.installPlugin(createjs.Sound);
 	 *
@@ -22624,7 +22398,7 @@ function makeRemotePointers() {
 	 *      <li>An XML document</li>
 	 *      <li>A binary arraybuffer loaded by XHR</li>
 	 *      <li>An audio tag (&lt;audio &gt;) for HTML audio. Note that it is recommended to use SoundJS APIs to play
-	 *      loaded audio. Specifically, audio loaded by Flash and WebAudio will return a loader object using this method
+	 *      loaded audio. Specifically, audio loaded by WebAudio will return a loader object using this method
 	 *      which can not be used to play audio back.</li>
 	 * </ul>
 	 * This object is also returned via the {{#crossLink "LoadQueue/fileload:event"}}{{/crossLink}} event as the 'item`
@@ -23090,7 +22864,7 @@ function makeRemotePointers() {
 				this._currentlyLoadingScript = false;
 			}
 
-			var index = createjs.indexOf(this._scriptOrder, item);
+			var index = this._scriptOrder.indexOf(item);
 			if (index == -1) {
 				return false;
 			} // This loader no longer exists
@@ -23835,7 +23609,6 @@ function makeRemotePointers() {
 		if (!this._injectCSS) { return; }
 		var head = document.head || document.getElementsByTagName('head')[0];
 		var styleTag = document.createElement("style");
-		styleTag.type = "text/css";
 		if (styleTag.styleSheet){
 			styleTag.styleSheet.cssText = css;
 		} else {
@@ -23964,16 +23737,16 @@ function makeRemotePointers() {
 
 		index = name.search(/[?#]/);
 		if (index !== -1) {
-			name = name.substr(0,index);
+			name = name.slice(0, index);
 		}
 		index = name.lastIndexOf(".");
 		if (index !== -1) {
-			ext = name.substr(index+1);
-			name = name.substr(0,index);
+			ext = name.substring(index + 1);
+			name = name.slice(0, index);
 		}
 		index = name.lastIndexOf("/");
 		if (index !== -1) {
-			name = name.substr(index+1);
+			name = name.slice(index + 1);
 		}
 
 		var family = name,
@@ -25210,12 +24983,12 @@ function makeRemotePointers() {
 	 * @property BrowserDetect
 	 * @type {Object}
 	 * @param {Boolean} isFirefox True if our browser is Firefox.
-	 * @param {Boolean} isOpera True if our browser is opera.
-	 * @param {Boolean} isChrome True if our browser is Chrome.  Note that Chrome for Android returns true, but is a
+	 * @param {Boolean} isOpera True if our browser is Opera.
+	 * @param {Boolean} isChrome True if our browser is Chrome. Note that Chrome for Android returns true, but is a
 	 * completely different browser with different abilities.
-	 * @param {Boolean} isIOS True if our browser is safari for iOS devices (iPad, iPhone, and iPod).
+	 * @param {Boolean} isIOS True if our browser is Safari for iOS devices (iPad, iPhone, and iPod).
 	 * @param {Boolean} isAndroid True if our browser is Android.
-	 * @param {Boolean} isBlackberry True if our browser is Blackberry.
+	 * @param {Boolean} isEdge True if our browser is Microsoft Edge (Chromium-based).
 	 * @constructor
 	 * @static
 	 */
@@ -25224,13 +24997,11 @@ function makeRemotePointers() {
 	};
 
 	var agent = BrowserDetect.agent = window.navigator.userAgent;
-	BrowserDetect.isWindowPhone = (agent.indexOf("IEMobile") > -1) || (agent.indexOf("Windows Phone") > -1);
 	BrowserDetect.isFirefox = (agent.indexOf("Firefox") > -1);
-	BrowserDetect.isOpera = (window.opera != null);
-	BrowserDetect.isChrome = (agent.indexOf("Chrome") > -1);  // NOTE that Chrome on Android returns true but is a completely different browser with different abilities
-	BrowserDetect.isIOS = (agent.indexOf("iPod") > -1 || agent.indexOf("iPhone") > -1 || agent.indexOf("iPad") > -1) && !BrowserDetect.isWindowPhone;
-	BrowserDetect.isAndroid = (agent.indexOf("Android") > -1) && !BrowserDetect.isWindowPhone;
-    BrowserDetect.isBlackberry = (agent.indexOf("Blackberry") > -1);
+	BrowserDetect.isOpera = (agent.indexOf("OPR/") > -1) || (agent.indexOf("Opera") > -1);
+	BrowserDetect.isChrome = (agent.indexOf("Chrome") > -1) && !BrowserDetect.isOpera;  // NOTE that Chrome on Android returns true but is a completely different browser with different abilities
+	BrowserDetect.isIOS = (agent.indexOf("iPod") > -1 || agent.indexOf("iPhone") > -1 || agent.indexOf("iPad") > -1);
+	BrowserDetect.isAndroid = (agent.indexOf("Android") > -1);
     // added by Dan Zen 3/27/21
 	BrowserDetect.isEdge = (agent.indexOf("Edg") > -1);
 
@@ -25265,7 +25036,7 @@ function makeRemotePointers() {
  *
  * <strong>Drawbacks of Audio Sprites</strong>
  * <ul>
- *     <li>No guarantee of smooth looping when using HTML or Flash audio. If you have a track that needs to loop
+ *     <li>No guarantee of smooth looping when using HTML audio. If you have a track that needs to loop
  * 		smoothly and you are supporting non-web audio browsers, do not use audio sprites for that sound if you can avoid
  * 		it.</li>
  *     <li>No guarantee that HTML audio will play back immediately, especially the first time. In some browsers
@@ -25496,15 +25267,13 @@ function makeRemotePointers() {
 	 *
 	 * <b>Plugins</b><br />
 	 * By default, the {{#crossLink "WebAudioPlugin"}}{{/crossLink}} or the {{#crossLink "HTMLAudioPlugin"}}{{/crossLink}}
-	 * are used (when available), although developers can change plugin priority or add new plugins (such as the
-	 * provided {{#crossLink "FlashAudioPlugin"}}{{/crossLink}}). Please see the {{#crossLink "Sound"}}{{/crossLink}} API
+	 * are used (when available), although developers can change plugin priority. Please see the {{#crossLink "Sound"}}{{/crossLink}} API
 	 * methods for more on the playback and plugin APIs. To install plugins, or specify a different plugin order, see
 	 * {{#crossLink "Sound/installPlugins"}}{{/crossLink}}.
 	 *
 	 * <h4>Example</h4>
 	 *
-	 *      createjs.FlashAudioPlugin.swfPath = "../src/soundjs/flashaudio";
-	 *      createjs.Sound.registerPlugins([createjs.WebAudioPlugin, createjs.FlashAudioPlugin]);
+	 *      createjs.Sound.registerPlugins([createjs.WebAudioPlugin, createjs.HTMLAudioPlugin]);
 	 *      createjs.Sound.alternateExtensions = ["mp3"];
 	 *      createjs.Sound.on("fileload", this.loadHandler, this);
 	 *      createjs.Sound.registerSound("path/to/mySound.ogg", "sound");
@@ -25517,7 +25286,7 @@ function makeRemotePointers() {
 	 *
 	 * The maximum number of concurrently playing instances of the same sound can be specified in the "data" argument
 	 * of {{#crossLink "Sound/registerSound"}}{{/crossLink}}.  Note that if not specified, the active plugin will apply
-	 * a default limit.  Currently HTMLAudioPlugin sets a default limit of 2, while WebAudioPlugin and FlashAudioPlugin set a
+	 * a default limit.  Currently HTMLAudioPlugin sets a default limit of 2, while WebAudioPlugin sets a
 	 * default limit of 100.
 	 *
 	 *      createjs.Sound.registerSound("sound.mp3", "soundId", 4);
@@ -25564,24 +25333,13 @@ function makeRemotePointers() {
 	 *         method in the call stack of a user input event to manually unlock the audio context.
 	 *     </li>
 	 *     <li>
-	 *         In SoundJS 0.6.2 and above, SoundJS will automatically listen for the first document-level "mousedown"
-	 *         and "touchend" event, and unlock WebAudio. This will continue to check these events until the WebAudio
-	 *         context becomes "unlocked" (changes from "suspended" to "running")
+	 *         SoundJS will automatically listen for the first document-level pointer event (using the modern Pointer Events API),
+	 *         and unlock WebAudio. This will continue to check these events until the WebAudio context becomes "unlocked"
+	 *         (changes from "suspended" to "running").
 	 *     </li>
 	 *     <li>
-	 *         Both the "mousedown" and "touchend" events can be used to unlock audio in iOS9+, the "touchstart" event
-	 *         will work in iOS8 and below. The "touchend" event will only work in iOS9 when the gesture is interpreted
-	 *         as a "click", so if the user long-presses the button, it will no longer work.
-	 *     </li>
-	 *     <li>
-	 *         When using the <a href="https://www.createjs.com/docs/easeljs/classes/Touch.html">EaselJS Touch class</a>,
-	 *         the "mousedown" event will not fire when a canvas is clicked, since MouseEvents are prevented, to ensure
-	 *         only touch events fire. To get around this, you can either rely on "touchend", or:
-	 *         <ol>
-	 *             <li>Set the `allowDefault` property on the Touch class constructor to `true` (defaults to `false`).</li>
-	 *             <li>Set the `preventSelection` property on the EaselJS `Stage` to `false`.</li>
-	 *         </ol>
-	 *         These settings may change how your application behaves, and are not recommended.
+	 *         The Pointer Events API unifies mouse, touch, and pen input, so audio will be unlocked on the first
+	 *         user interaction regardless of input type.
 	 *     </li>
 	 * </ul>
 	 *
@@ -25746,8 +25504,6 @@ function makeRemotePointers() {
 	 * A list of the default supported extensions that Sound will <i>try</i> to play. Plugins will check if the browser
 	 * can play these types, so modifying this list before a plugin is initialized will allow the plugins to try to
 	 * support additional media types.
-	 *
-	 * NOTE this does not currently work for {{#crossLink "FlashAudioPlugin"}}{{/crossLink}}.
 	 *
 	 * More details on file formats can be found at <a href="https://en.wikipedia.org/wiki/Audio_file_format" target="_blank">https://en.wikipedia.org/wiki/Audio_file_format</a>.<br />
 	 * A very detailed list of file formats can be found at <a href="https://www.fileinfo.com/filetypes/audio" target="_blank">https://www.fileinfo.com/filetypes/audio</a>.
@@ -26206,8 +25962,7 @@ function makeRemotePointers() {
 	 *
 	 * <h4>Example</h4>
 	 *
-	 *      createjs.FlashAudioPlugin.swfPath = "../src/soundjs/flashaudio/";
-	 *      createjs.Sound.registerPlugins([createjs.WebAudioPlugin, createjs.HTMLAudioPlugin, createjs.FlashAudioPlugin]);
+	 *      createjs.Sound.registerPlugins([createjs.WebAudioPlugin, createjs.HTMLAudioPlugin]);
 	 *
 	 * @method registerPlugins
 	 * @param {Array} plugins An array of plugins classes to install.
@@ -26869,7 +26624,7 @@ function makeRemotePointers() {
 		}
 		var result = instance._beginPlaying(playProps);
 		if (!result) {
-			var index = createjs.indexOf(this._instances, instance);
+			var index = this._instances.indexOf(instance);
 			if (index > -1) {this._instances.splice(index, 1);}
 			return false;
 		}
@@ -26900,7 +26655,7 @@ function makeRemotePointers() {
 	 */
 	s._playFinished = function (instance) {
 		SoundChannel.remove(instance);
-		var index = createjs.indexOf(this._instances, instance);
+		var index = this._instances.indexOf(instance);
 		if (index > -1) {this._instances.splice(index, 1);}	// OJR this will always be > -1, there is no way for an instance to exist without being added to this._instances
 	};
 
@@ -27101,7 +26856,7 @@ function makeRemotePointers() {
 	 * return false.
 	 */
 	p._remove = function (instance) {
-		var index = createjs.indexOf(this._instances, instance);
+		var index = this._instances.indexOf(instance);
 		if (index == -1) {return false;}
 		this._instances.splice(index, 1);
 		this.length--;
@@ -28877,7 +28632,7 @@ function makeRemotePointers() {
 	 */
 	s.isSupported = function () {
 		// check if this is some kind of mobile device, Web Audio works with local protocol under PhoneGap and it is unlikely someone is trying to run a local file
-		var isMobilePhoneGap = createjs.BrowserDetect.isIOS || createjs.BrowserDetect.isAndroid || createjs.BrowserDetect.isBlackberry;
+		var isMobilePhoneGap = createjs.BrowserDetect.isIOS || createjs.BrowserDetect.isAndroid;
 		// OJR isMobile may be redundant with _isFileXHRSupported available.  Consider removing.
 		if (location.protocol == "file:" && !isMobilePhoneGap && !this._isFileXHRSupported()) { return false; }  // Web Audio requires XHR, which is not usually available locally
 		s._generateCapabilities();
@@ -28976,14 +28731,11 @@ function makeRemotePointers() {
 			s._scratchBuffer = s.context.createBuffer(1, 1, 22050);
 		}
 
-		s._compatibilitySetUp();
-
-		// Listen for document level clicks to unlock WebAudio on iOS. See the _unlock method.
-		if ("ontouchstart" in window && s.context.state != "running") {
-			s._unlock(); // When played inside of a touch event, this will enable audio on iOS immediately
-            document.addEventListener("mousedown", s._unlock, true);
-			document.addEventListener("touchstart", s._unlock, true);
-			document.addEventListener("touchend", s._unlock, true);
+		// Listen for document level pointer events to unlock WebAudio on iOS/mobile. See the _unlock method.
+		if (window.PointerEvent && s.context.state != "running") {
+			s._unlock(); // When played inside of a pointer event, this will enable audio immediately
+			document.addEventListener("pointerdown", s._unlock, true);
+			document.addEventListener("pointerup", s._unlock, true);
 		}
 
 		s._capabilities = {
@@ -29011,11 +28763,11 @@ function makeRemotePointers() {
 	/**
 	 * Create an audio context for the sound.
 	 *
-	 * This method handles both vendor prefixes (specifically webkit support), as well as a case on iOS where
-	 * audio played with a different sample rate may play garbled when first started. The default sample rate is
-	 * 44,100, however it can be changed using the {{#crossLink "WebAudioPlugin/DEFAULT_SAMPLE_RATE:property"}}{{/crossLink}}.
+	 * This method handles a case on iOS where audio played with a different sample rate may play garbled
+	 * when first started. The default sample rate is 44,100, however it can be changed using the
+	 * {{#crossLink "WebAudioPlugin/DEFAULT_SAMPLE_RATE:property"}}{{/crossLink}}.
 	 * @method _createAudioContext
-	 * @return {AudioContext | webkitAudioContext}
+	 * @return {AudioContext}
 	 * @private
 	 * @static
 	 * @since 1.0.0
@@ -29023,7 +28775,7 @@ function makeRemotePointers() {
 	s._createAudioContext = function() {
 		// Slightly modified version of https://github.com/Jam3/ios-safe-audio-context
 		// Resolves issues with first-run contexts playing garbled on iOS.
-		var AudioCtor = (window.AudioContext || window.webkitAudioContext);
+		var AudioCtor = window.AudioContext;
 		if (AudioCtor == null) { return null; }
 		var context = new AudioCtor();
         console.warn("The AudioContext is ready"); // Dan Zen March 16 2021
@@ -29047,41 +28799,9 @@ function makeRemotePointers() {
 	}
 
 	/**
-	 * Set up compatibility if only deprecated web audio calls are supported.
-	 * See https://www.w3.org/TR/webaudio/#DeprecationNotes
-	 * Needed so we can support new browsers that don't support deprecated calls (Firefox) as well as old browsers that
-	 * don't support new calls.
-	 *
-	 * @method _compatibilitySetUp
-	 * @static
-	 * @private
-	 * @since 0.4.2
-	 */
-	s._compatibilitySetUp = function() {
-		s._panningModel = "equalpower";
-		//assume that if one new call is supported, they all are
-		if (s.context.createGain) { return; }
-
-		// simple name change, functionality the same
-		s.context.createGain = s.context.createGainNode;
-
-		// source node, add to prototype
-		var audioNode = s.context.createBufferSource();
-		audioNode.__proto__.start = audioNode.__proto__.noteGrainOn;	// note that noteGrainOn requires all 3 parameters
-		audioNode.__proto__.stop = audioNode.__proto__.noteOff;
-
-		// panningModel
-		s._panningModel = 0;
-	};
-
-	/**
-	 * Try to unlock audio on iOS. This is triggered from either WebAudio plugin setup (which will work if inside of
-	 * a `mousedown` or `touchend` event stack), or the first document touchend/mousedown event. If it fails (touchend
-	 * will fail if the user presses for too long, indicating a scroll event instead of a click event.
-	 *
-	 * Note that earlier versions of iOS supported `touchstart` for this, but iOS9 removed this functionality. Adding
-	 * a `touchstart` event to support older platforms may preclude a `mousedown` even from getting fired on iOS9, so we
-	 * stick with `mousedown` and `touchend`.
+	 * Try to unlock audio on iOS/mobile. This is triggered from either WebAudio plugin setup (which will work if inside of
+	 * a pointer event stack), or the first document pointerdown/pointerup event. Uses the modern Pointer Events API
+	 * which unifies mouse, touch, and pen input.
 	 * @method _unlock
 	 * @since 0.6.2
 	 * @private
@@ -29090,9 +28810,8 @@ function makeRemotePointers() {
 		if (s._unlocked) { return; }
 		s.playEmptySound();
 		if (s.context.state == "running") {
-			document.removeEventListener("mousedown", s._unlock, true);
-			document.removeEventListener("touchend", s._unlock, true);
-			document.removeEventListener("touchstart", s._unlock, true);
+			document.removeEventListener("pointerdown", s._unlock, true);
+			document.removeEventListener("pointerup", s._unlock, true);
 			s._unlocked = true;
 		}
 	};
@@ -29305,7 +29024,7 @@ function makeRemotePointers() {
 	 */
 	p.set = function (tag) {
 		// OJR this first step seems unnecessary
-		var index = createjs.indexOf(this._tags, tag);
+		var index = this._tags.indexOf(tag);
 		if (index == -1) {
 			this._tags.src = null;
 			this._tags.push(tag);
