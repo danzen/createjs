@@ -8688,8 +8688,10 @@ createjs.deprecate = function(fallbackMethod, name) {
 		try { bounds = e.getBoundingClientRect(); } // this can fail on disconnected DOM elements in IE9
 		catch (err) { bounds = {top: e.offsetTop, left: e.offsetLeft, width:e.offsetWidth, height:e.offsetHeight}; }
 
-		var offX = (window.pageXOffset || document.scrollLeft || 0) - (document.clientLeft || document.body.clientLeft || 0);
-		var offY = (window.pageYOffset || document.scrollTop || 0) - (document.clientTop  || document.body.clientTop  || 0);
+		//var offX = window.scrollX; // would be nice to use window.scrollX but zim.scrollX(num, time) overrides it
+		var offX = (typeof window.scrollX === 'function' ? window.scrollX() : window.scrollX);
+		//var offY = window.scrollY; // would be nice to use window.scrollX but zim.scrollY(num, time) overrides it
+		var offY = (typeof window.scrollY === 'function' ? window.scrollY() : window.scrollY);
 
 		var styles = window.getComputedStyle ? getComputedStyle(e,null) : e.currentStyle; // IE <9 compatibility.
 		var padL = parseInt(styles.paddingLeft)+parseInt(styles.borderLeftWidth);
@@ -8723,7 +8725,6 @@ createjs.deprecate = function(fallbackMethod, name) {
 	 * @param {MouseEvent} e
 	 **/
 	p._handleMouseMove = function(e) {
-		if(!e){ e = window.event; }
 		this._handlePointerMove(-1, e, e.pageX, e.pageY);
 	};
 
@@ -19175,7 +19176,7 @@ function makeRemotePointers() {
 		// Drop the query string
 		var queryIndex = path.indexOf("?");
 		if (queryIndex > -1) {
-			path = path.substr(0, queryIndex);
+			path = path.slice(0, queryIndex);
 		}
 
 		// Absolute
@@ -19209,7 +19210,7 @@ function makeRemotePointers() {
 		}
 		var params = [];
 		for (var n in data) {
-			params.push(n + "=" + escape(data[n]));
+    params.push(n + "=" + encodeURIComponent(data[n]));
 		}
 		if (query) {
 			params = params.concat(query);
@@ -23608,7 +23609,6 @@ function makeRemotePointers() {
 		if (!this._injectCSS) { return; }
 		var head = document.head || document.getElementsByTagName('head')[0];
 		var styleTag = document.createElement("style");
-		styleTag.type = "text/css";
 		if (styleTag.styleSheet){
 			styleTag.styleSheet.cssText = css;
 		} else {
@@ -23737,16 +23737,16 @@ function makeRemotePointers() {
 
 		index = name.search(/[?#]/);
 		if (index !== -1) {
-			name = name.substr(0,index);
+			name = name.slice(0, index);
 		}
 		index = name.lastIndexOf(".");
 		if (index !== -1) {
-			ext = name.substr(index+1);
-			name = name.substr(0,index);
+			ext = name.substring(index + 1);
+			name = name.slice(0, index);
 		}
 		index = name.lastIndexOf("/");
 		if (index !== -1) {
-			name = name.substr(index+1);
+			name = name.slice(index + 1);
 		}
 
 		var family = name,
